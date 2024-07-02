@@ -1,0 +1,37 @@
+Note: The following floating-point exceptions are signalling: IEEE_DENORMAL
+ _________________________
+
+ Parameters
+ _________________________
+
+ dt =   0.208333328     a.u.
+ dx =   0.200097710     a.u.
+ dR =    5.51016144E-02 a.u.
+ dpx =    1.53323179E-02 a.u.
+ dPR =   0.111356504     a.u.
+ RI=   1.32280862     a.u.
+ R0=  0.188972667     a.u.Rend=   56.5579224     a.u.
+ Wavelength 1 =   750.000000     nm
+ Phase 1 =   0.00000000    
+ Field strength =  0.100000001     a.u.   5.14220646E+10 V/m
+ Intensity =   3.50900002E+14 W/cm2
+ Wavelength 2 =   800.000000     nm
+ Phase 2 =   0.00000000    
+ Field strength =   0.00000000     a.u.   0.00000000     V/m
+ Intensity =   0.00000000     W/cm2
+ Wave duration =   5.00000000     fs
+
+ kap =   1.0002722347752702     
+ lam =   0.0000000000000000     
+
+ __________________________
+
+ x0=  -204.80000000000001      xend=   204.80000000000001     
+ Px0=  -15.700293364009537      Pxend=   15.684961046271248     
+ R0=  0.18897266635103194      Rend=   56.557923599333670     
+ PR0=  -57.014530719993743      PRend=   56.903174214681258     
+ test
+ global minimum:  -23.2689953    
+ test
+ Run time=  0.244707003     seconds
+ Calculated run time is   0.248999998      seconds
