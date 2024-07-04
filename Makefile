@@ -21,10 +21,9 @@ endif
 
 default: 	dynamics
 
-dynamics:   	main.o   adiabatic.o\
+dynamics:   	main.o\
 	propagation.o	setpot.o\
-	nuclear_wv.o\
-	pulse.o
+	nuclear_wv.o	pulse.o
 				
 		${FC} *.o ${FFLAGS} ${LDFLAGS} -o dynamics
 		
@@ -34,8 +33,8 @@ main.o:	 main.f90
 setpot.o:	setpot.f90
 	${FC} setpot.f90 ${FFLAGS} -c -o setpot.o 	
 		
-adiabatic.o:	adiabatic.f90
-	${FC} adiabatic.f90 ${FFLAGS} -c -o adiabatic.o 
+#adiabatic.o:	adiabatic.f90
+#	${FC} adiabatic.f90 ${FFLAGS} -c -o adiabatic.o 
 	
 propagation.o:	propagation.f90
 	${FC} propagation.f90 ${FFLAGS} -c -o propagation.o 

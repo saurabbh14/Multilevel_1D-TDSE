@@ -1,8 +1,8 @@
 ! subroutine to calculate the solution of the electronic Schrödinger equation
 
-subroutine adiabatic_surface(adb, ewf, mu_all)
+subroutine adiabatic_surface(ewf)
       
- use data_grid
+ use global_vars
  use pot_param
  use data_au
  use FFTW3
@@ -19,10 +19,8 @@ subroutine adiabatic_surface(adb, ewf, mu_all)
   double precision dt2
   double precision E, E1, norm, norm1
   double precision CONS,thresh, thresh2
-  double precision adb(NR, Nstates)  ! Adiabatic Energy
   double precision ewf(Nx, NR, Nstates), mu(NR,3)
     
-  double precision mu_all(Nstates, Nstates,NR)
   double precision, allocatable, dimension(:):: vpropx     
   double precision, allocatable, dimension(:):: psi, psii, psi1  
   double precision, allocatable, dimension(:,:,:):: ref
@@ -270,7 +268,7 @@ end
 
 subroutine eigenvalue_real(A, B, E, dt2)      
       
-use data_grid
+use global_vars, only: Nx
  implicit none  
  double precision:: dt2, E, e1, e2
  double precision:: A, B, norm
@@ -293,7 +291,7 @@ end subroutine
                                                           
 subroutine integ_real(A, B, C)
 
-use data_grid  
+use global_vars, only:Nx, dx  
  implicit none  
  integer I 
  double precision A(Nx), B(Nx)

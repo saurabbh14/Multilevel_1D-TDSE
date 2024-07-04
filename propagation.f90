@@ -1,6 +1,6 @@
-subroutine propagation_1D(adb, mu_all, chi0, E, A)
+subroutine propagation_1D(chi0, E, A)
 
-use data_grid
+use global_vars
 use pot_param
 use data_au
 use FFTW3
@@ -25,9 +25,8 @@ use omp_lib
  double precision E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates),norm1,norm_diss
  double precision A(Nt)
  double precision evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
- double precision :: adb(NR, Nstates), H_ac(NR,Nstates), Energy_axis(NR)
+ double precision :: H_ac(NR,Nstates), Energy_axis(NR)
  double precision ::chi0(nr,vstates), Boltzmann_populations(Vstates)
- double precision:: mu_all(Nstates,Nstates,NR)
  double precision :: norm_overlap(Nstates),norm_outR(Nstates), norm_outP(Nstates)
  double precision :: norm_gesP(Nstates), norm_gP_over(Nstates)
  double precision :: vib_pop(Vstates) 
@@ -585,7 +584,7 @@ end subroutine
 
 subroutine integ(psi, norm)
       
-use data_grid
+use global_vars, only:NR, Nstates, dR
  implicit none
  integer I, J
       
@@ -636,7 +635,7 @@ end subroutine
 
 subroutine pulse2(tout,mu,E)
 
-use data_grid, only:dt, Nstates,kap, lam
+use global_vars, only:dt, Nstates,kap, lam
 use data_au, only:im
 
 implicit none
@@ -706,7 +705,7 @@ end subroutine
 
 !!------------------------------------------------
 subroutine cutoff_cos(cof)
-use data_grid
+use global_vars, only:NR, R, dR
 use data_au
 use pot_param
 
@@ -729,7 +728,7 @@ implicit none
  end subroutine
 !------------------------------------------------
  subroutine cutoff_ex(cof)
- use data_grid
+ use global_vars, only:NR, R, dR
  use data_au
  use pot_param
 
@@ -738,7 +737,7 @@ implicit none
     integer :: J
     double precision:: cof(NR),c
 
-  c=6.00d0
+  c=1.800d0
  do j = 1, NR
    R(J) = R0 + (j - 1) * dR
    cof(j)=1.0d0/(1.0d0+exp(c*(R(J)-Rend+cpmR)))

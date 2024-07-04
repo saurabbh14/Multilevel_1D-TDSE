@@ -1,6 +1,6 @@
-subroutine nuclear_wavefkt(adb,chi0)
+subroutine nuclear_wavefkt(chi0)
 
- use data_grid
+ use global_vars
  use pot_param
  use data_au
  use FFTW3
@@ -18,11 +18,10 @@ implicit none
   double precision:: E(vstates), E1, norm
   double precision:: CONS, thresh
   double precision:: dummy, R_e, D_e, alpha, Rin
-  double precision:: adb(NR, Nstates),chi0(nr,vstates)
+  double precision:: chi0(nr,vstates)
   double precision, parameter:: temperature=3100 
   double precision:: total_pop, Boltzmann_populations(Vstates) 
   double precision:: trans_dipole(Vstates,Vstates) 
-  double precision:: mu_all(NR, Nstates, Nstates) 
  
   double precision, allocatable, dimension(:):: vprop
   double precision, allocatable, dimension(:):: psi, psi1
@@ -81,7 +80,7 @@ Nloop: do J = 1,1! Nstates ! varying the different adiabatic states
 
 
     do i = 1, NR ! new vprop
-      vprop(i) = dexp(-0.5d0 * dt2 * adb(i,J))
+      vprop(i) = exp(-0.5d0 * dt2 * adb(i,J))
     end do
     Rin = R(minloc(adb(:,J),1))
 
@@ -240,7 +239,7 @@ end
 
 subroutine eigenvalue_R(A, B, E, dt2)      
       
-use data_grid
+use global_vars, only: NR
  implicit none  
  double precision:: E, e1, e2, norm
  double precision, intent(in):: dt2, A(nr), B(nr)
@@ -263,7 +262,7 @@ end subroutine
                                                           
 subroutine integ_r(A, B, C)
 
-use data_grid  
+use global_vars, only:NR, dR  
  implicit none  
  integer I 
  double precision,intent(in):: A(Nr), B(Nr)

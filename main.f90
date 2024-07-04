@@ -1,21 +1,96 @@
-module data_grid
- integer:: Nt, Nstates, Vstates, NR
+module commandline_args
+character(10000):: command_line
+character(2000):: input
+
+!call read_command_line
+
+!call parse_command_line
+
+
+contains
+
+     subroutine read_command_line
+       integer :: exenamelength
+       integer :: io, io2
+
+       command_line = ""
+       call get_command(command = command_line,status = io)
+       if (io==0) then
+         call get_command_argument(0,length = exenamelength,status = io2)
+         if (io2==0) then
+           command_line = "&cmd "//adjustl(trim(command_line(exenamelength+1:)))//" /"
+         else
+           command_line = "&cmd "//adjustl(trim(command_line))//" /"
+         end if
+       else
+         write(*,*) io,"Error getting command line."
+       end if
+     end subroutine
+
+     subroutine parse_command_line
+       character(256) :: msg
+       namelist /cmd/ input, adb_pot, trans_dip
+       integer :: io
+
+       if (len_trim(command_line)>0) then
+         msg = ''
+         read(command_line,nml = cmd,iostat = io,iomsg = msg)
+         if (io/=0) then
+           error stop "Error parsing the command line or cmd.conf " // msg
+         end if
+       end if
+     end subroutine
+
+
+end module commandline_args
+
+module input_vars
+ use commandline_args
+! R-grid
+ integer:: NR 
+
+! electronic states
+ integer:: Nstates
+
+! vibrational states
+ integer:: Vstates
+ 
+! time grid 
+ integer:: Nt
+
+! masses
+ double precision:: m1, m2
+
+! guess initial wf
+ double precision:: RI, kappa
+
+! laser parameters
+ double precision:: tp1, fwhm, t_start1
+ double precision:: tp2, t_start2
+ double precision:: e01, e02, phi1, phi2
+ double precision:: lambda1, lambda2
+
+! input files
+ character(2000):: adb_pot, trans_dip_prefix
+
+end module input_vars
+
+module global_vars
+ use input_vars
  integer, parameter:: Nx=2048 !, NR=1024 !changed back  !This program has been edited to check momentum grid dependance on number of grid point
  !reverted  back the changes while running calculations(Change date: 11/03/20)
- double precision:: RI, kappa,dR
+ double precision:: dR
  double precision, allocatable:: R(:), x(:)
  double precision, allocatable:: en(:)
  double precision, allocatable:: Px(:),PR(:)
  double precision, allocatable:: Pot(:,:)
+ double precision, allocatable, dimension(:,:,:):: mu_all
+ double precision, allocatable, dimension(:,:):: adb
  double precision:: kap, lam
  double precision:: dx, dt, xeq
  double precision:: dpr, dpx 
- double precision:: tp1, fwhm, t_start1
- double precision:: tp2, t_start2
- double precision:: e01, e02, phi1, phi2
  double precision:: omega1, omega2
- double precision:: lambda1, lambda2
- double precision:: mn, mn1, mn2, m1, m2 !all relevent mass veriables
+ double precision:: mn, mn1, mn2 !all relevent mass veriables
 end module
 
 module data_au
@@ -59,9 +134,10 @@ end module
 
 
 
-program metiu
+program TDSE_main
 
-use data_grid
+use commandline_args
+use global_vars
 use data_au
  implicit none
  integer:: I, J, I_Emax
@@ -71,19 +147,22 @@ use data_au
  
  Real*4 st, ft,timer_elapsed_time
  double precision Emax
- double precision, allocatable, dimension(:,:,:):: mu_all
- double precision, allocatable, dimension(:,:):: adb
  double precision, allocatable, dimension(:,:,:):: ewf
  double precision, allocatable, dimension(:,:):: chi0
  double precision, allocatable:: El(:), Al(:)
   
   call cpu_time(st)
   call system_clock(scount,rate)
-  call input
+  call read_command_line
+  call parse_command_line
+  print*, "reading input:"
+  print*, "General Inputs from", trim(input)
+  
+  call read_input
   call p_grid
 
   
- allocate(adb(NR,Nstates),ewf(Nx,NR,Nstates),mu_all(Nstates,Nstates,NR))
+ allocate(ewf(Nx,NR,Nstates))
  allocate(chi0(nr,vstates))
  allocate(El(Nt), Al(Nt)) 
 
@@ -91,14 +170,12 @@ print*,"test"
   call potential
 print*,"test"    
   ewf = 0.d0
-  adb = 0.d0 
+ ! adb = 0.d0 
 
 !  call adiabatic_surface(adb, ewf, mu_all)  
-  call pot_read(adb)
-  call trans_dipole_read(mu_all)
-  call nuclear_wavefkt(adb,chi0)
+  call nuclear_wavefkt(chi0)
   call pulse(El, Al)
-  call propagation_1D(adb, mu_all, chi0, El, Al)
+  call propagation_1D(chi0, El, Al)
   deallocate (adb, mu_all)
  deallocate (ewf, chi0)
 
@@ -116,42 +193,82 @@ end program
 ! _______________ Subroutines __________________________________________________
 
 
-subroutine input
+subroutine read_input
 
-use data_grid
+use global_vars
 use pot_param
 implicit none
  real*4 :: dummy, dummy2, dummy3, dummy4
- integer:: i, j
+ integer:: i, j, input_tk
+ namelist /grid/NR
+ namelist /nucl_masses/m1,m2
+ namelist /time_grid/dt,Nt
+ namelist /elec_states/Nstates
+ namelist /vib_states/Vstates
+ namelist /ini_guess_wf/Ri, kappa
+ namelist /laser_param/lambda1,lambda2,tp1,tp2,t_start1,t_start2,E01,E02,phi1,phi2
+ namelist /input_files/adb_pot, trans_dip_prefix
 
- open(10,file='input',status='old')
-  
-  read(10,*) NR                   ! NR = number of grid points
-  read(10,*) m1, m2               ! m1=mass1, m2=mass2
-  read(10,*) dt                   ! dt = time step in a.u.
-  read(10,*) Nt                   ! Nt = number of time steps.	
-  read(10,*) Nstates              ! Nstates = Number of calculated excited states.
-  read(10,*) Vstates              ! Vstates = Number of calculated vibrational states.
-  read(10,*) RI                   ! RI = center of initial Gaussian in 10^-10 m.
-  read(10,*) kappa                ! kappa = width of initial Gaussian 
-  read(10,*) lambda1, lambda2     ! wavelength of pulse
-  read(10,*) tp1, t_start1, E01, phi1 
-  read(10,*) tp2, t_start2, E02, phi2                  ! carrier-envelope phase
+ open(newunit=input_tk, file=input, status='old')
+ read(input_tk, nml=grid)
+ print*, "NR =", NR
+ read(input_tk, nml=nucl_masses)
+ print*, "masses:"
+ print*, "m1 =", m1, "m2 =", m2
+ read(input_tk,nml=time_grid)
+ print*, "time grid:"
+ print*, "dt =", dt, "fs"
+ print*, "Nt =", Nt, "steps"
+ read(input_tk,nml=elec_states)
+ print*, "No. of electronic states:", Nstates
+ read(input_tk,nml=vib_states)
+ print*, "No. of vibrational states:", Vstates
+ read(input_tk,nml=ini_guess_wf)
+ print*, "Guess wavefunction:" 
+ print*, "Initial position (RI):", RI
+ print*, "Initial width (kappa):", kappa
+ read(input_tk,nml=laser_param)
+ print*, "Laser parameters:"
+ print*, "Laser #1:"
+ print*, "Lambda:", lambda1, "nm"
+ print*, "Electric field strength:", E01, "a.u."
+ print*, "Pulse envelope: Cos**2"
+ print*, "Pulse width (tp):", tp1, "fs"
+ print*, "Pulse midpoint (t_start):", t_start1, "fs"
+ print*, "phi1:", phi1, "pi"
+ print*, "Laser #2:"
+ print*, "Lambda:", lambda2, "nm"
+ print*, "Electric field strength:", E02, "a.u."
+ print*, "Pulse envelope: Cos**2"
+ print*, "Pulse width (tp):", tp2, "fs"
+ print*, "Pulse midpoint (t_start):", t_start2, "fs"
+ print*, "phi1:", phi2, "pi"
+ read(input_tk,nml=input_files)
+
+
+! open(10,file='input',status='old')
+!  
+!  read(10,*) NR                   ! NR = number of grid points
+!  read(10,*) m1, m2               ! m1=mass1, m2=mass2
+!  read(10,*) dt                   ! dt = time step in a.u.
+!  read(10,*) Nt                   ! Nt = number of time steps.	
+!  read(10,*) Nstates              ! Nstates = Number of calculated excited states.
+!  read(10,*) Vstates              ! Vstates = Number of calculated vibrational states.
+!  read(10,*) RI                   ! RI = center of initial Gaussian in 10^-10 m.
+!  read(10,*) kappa                ! kappa = width of initial Gaussian 
+!  read(10,*) lambda1, lambda2     ! wavelength of pulse
+!  read(10,*) tp1, t_start1, E01, phi1 
+!  read(10,*) tp2, t_start2, E02, phi2                  ! carrier-envelope phase
   
   allocate(R(NR), x(Nx), en(NR))
   allocate(pR(NR), px(Nx))
-! open(11,file='aeN_new_512.dat',status='old')
- open(11,file='H2+_softcore-param_smooth-interpolated_2048.dat',status='old')
- do i=1,NR
- read(11,*) R(I), en(I)
-! read(11,*) dummy, dummy2 !, dummy3, dummy4
-! read(11,*) dummy, dummy2 !, dummy3, dummy4
-! read(11,*) dummy, dummy2 !, dummy3, dummy4
- enddo
- close(11)
+  allocate(adb(NR,Nstates),mu_all(Nstates,Nstates,NR))
+
+  call pot_read
+  call trans_dipole_read
 !  R0=0.1/au2a
 !  Rend=15.d0/au2a
-  R =R/au2a
+!  R =R/au2a
   R0 =R(1)
   Rend = R(NR)
   dR =R(2)-R(1)!(Rend - R0) / (NR - 1)
@@ -228,9 +345,8 @@ implicit none
  
 subroutine p_grid
 
-use data_grid
+use global_vars, only:px, pR, dpx, dpR, Nx, NR, R, x
 use pot_param
-use data_au
  implicit none 
  integer:: I 
   
@@ -264,19 +380,19 @@ end subroutine
 !------------------------------------------------------------------------------
 !%%%%%% File read %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !------------------------------------------------------------------------------
-subroutine pot_read(adb)
-use data_grid
-use pot_param
+subroutine pot_read
+use global_vars, only:R, NR, adb, adb_pot
 use data_au
  implicit none
- integer:: I
- double precision:: adb(NR, Nstates), dummy
- open(106,file='H2+_BO.dat',status='unknown')
+ integer:: I, pot_tk
+ double precision:: dummy
+ print*, "Potential surfaces:", trim(adb_pot)
+ open(newunit=pot_tk,file=adjustl(trim(adb_pot)),status='unknown')
  do I = 1, NR
-   read(106,*) dummy, adb(I,:) !, sngl(adb(I,2)*au2eV), &
+   read(pot_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
  end do
- close(106)
+ close(pot_tk)
  open(1061,file='H2+_BO_read.out',status='unknown')
  do I = 1, NR
    write(1061,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
@@ -288,39 +404,66 @@ end subroutine
 
 !------------------------------------------------------------------------------
 
-subroutine trans_dipole_read(mu_all)
-use data_grid
-use pot_param
-use data_au
+subroutine trans_dipole_read
+use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates
  implicit none
  integer:: I, L, M
- character(150):: fn
- double precision:: mu_all(Nstates,Nstates,NR), dummy
+ character(2000):: fn
+ double precision:: dummy
 
+ print*, "Transition dipoles with file prefix", trim(trans_dip_prefix)
  mu_all = 0.d0
  !transition dipole moments of all states
- do L = 1, Nstates
-  do M = L+1, Nstates
-    write(fn,fmt='(i0,i0,a)') L,M,'.dat'
-    print*, fn
-    open(unit=2000, file=fn, form='formatted')
-    do I = 1, NR
-      read(2000,*) dummy, mu_all(L,M,I)
-    enddo
-    close(2000)
+ if (trim(trans_dip_prefix) .eq.'') then
+  do L = 1, Nstates
+   do M = L+1, Nstates
+     write(fn,fmt='(i0,i0,a)') L,M,'.dat'
+     print*, trim(fn)
+     open(unit=2000, file=adjustl(trim(fn)), form='formatted')
+     do I = 1, NR
+       read(2000,*) dummy, mu_all(L,M,I)
+     enddo
+     close(2000)
+   enddo
   enddo
- enddo
+ 
+  do L = 1, Nstates
+   do M = L+1, Nstates
+     write(fn,fmt='(i0,i0,a)') L,M,'_read.out'
+     print*, trim(fn)
+     open(unit=2001, file=adjustl(trim(fn)), form='formatted')
+     do I=1,NR
+       write(2001,*) R(I), mu_all(L,M,I)
+     enddo
+     close(2001)
+   enddo
+  enddo
 
- do L = 1, Nstates
-  do M = L+1, Nstates
-    write(fn,fmt='(i0,i0,a)') L,M,'_read.out'
-    print*, fn
-    open(unit=2001, file=fn, form='formatted')
-    do I=1,NR
-      write(2001,*) R(I), mu_all(L,M,I)
-    enddo
-    close(2001)
+ else
+
+  do L = 1, Nstates
+   do M = L+1, Nstates
+     write(fn,fmt='(a,i0,i0,a)') adjustl(trim(trans_dip_prefix)),L,M,'.dat'
+     print*, trim(fn)
+     open(unit=2000, file=adjustl(trim(fn)), form='formatted')
+     do I = 1, NR
+       read(2000,*) dummy, mu_all(L,M,I)
+     enddo
+     close(2000)
+   enddo
   enddo
- enddo
+ 
+  do L = 1, Nstates
+   do M = L+1, Nstates
+     write(fn,fmt='(a,i0,i0,a)') adjustl(trim(trans_dip_prefix)),L,M,'_read.out'
+     print*, trim(fn)
+     open(unit=2001, file=adjustl(trim(fn)), form='formatted')
+     do I=1,NR
+       write(2001,*) R(I), mu_all(L,M,I)
+     enddo
+     close(2001)
+   enddo
+  enddo
+ endif
 
 end subroutine

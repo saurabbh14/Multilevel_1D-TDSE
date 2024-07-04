@@ -1,6 +1,6 @@
  subroutine potential
          
-use data_grid
+use global_vars
 use data_au  
 use pot_param   
  

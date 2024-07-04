@@ -1,6 +1,6 @@
 subroutine pulse(E2,A)
 
-use data_grid        
+use global_vars
 !use pot_param
 use data_au
 use FFTW3
