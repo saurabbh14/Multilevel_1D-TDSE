@@ -1,7 +1,7 @@
+! A subroutine for defining the field 
 subroutine pulse(E2,A)
 
 use global_vars
-!use pot_param
 use data_au
 use FFTW3
 use omp_lib
@@ -20,6 +20,7 @@ double precision A01, A02
 double precision A2(Nt), A21, A22
 double precision A(Nt), E2_new(Nt)
 double precision IR(Nt), Eeff(Nt), IREeff(Nt), Eeff2(Nt)
+double precision cos2
 double precision g1(Nt), g2(Nt), en_curve
 double precision time_end, time_start 
 double precision pulse_offset
@@ -81,19 +82,24 @@ g2=0.d0
 A01=E01/omega1
 A02=E02/omega2
 E2_New=0.d0
+
+
 timeloop: do K = 1, Nt
   time = k*dt 
-  if (time .gt. (t_start1+pulse_offset-tp1/2) .and. time .lt. (t_start1+pulse_offset+tp1/2)) then
-    g1(K) = (cos((time - t_start1-pulse_offset)*pi/tp1))**2      
-    E21 = E01*(cos((time - t_start1-pulse_offset)*pi/tp1))**2 * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
+!  if (time .gt. (t_start1+pulse_offset-tp1/2) .and. time .lt. (t_start1+pulse_offset+tp1/2)) then
+!    g1(K) = (cos((time - t_start1-pulse_offset)*pi/tp1))**2      
+!    E21 = E01*(cos((time - t_start1-pulse_offset)*pi/tp1))**2 * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
 !    E21 = E01*g1(K) * cos(omega1 * (time-t_start1-pulse_offset)+phi1) &
 !            &  +(pi/(tp1*omega1)) *sin(2*(time-t_start1-pulse_offset)*pi/tp1) *sin(omega1*(time-t_start1-pulse_offset)+phi1)
-    A21 = A01*(cos((time - t_start1-pulse_offset)*pi/tp1))**2 * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
-  else
-    g1(k) = 0.0d0      
-    E21=0.0d0
-    A21=0.0d0
-  endif
+!    A21 = A01*(cos((time - t_start1-pulse_offset)*pi/tp1))**2 * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
+!  else
+!    g1(k) = 0.0d0      
+!    E21=0.0d0
+!    A21=0.0d0
+!  endif
+    g1(k) = cos2(time,tp1,t_start1,pulse_offset)
+    E21 = E01*g1(K) * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
+    A21 = A01*g1(K) * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
   write(field1_tk,*) time*au2fs, E21
   write(envelope1_tk,*) time, A01*g1(K), 0.d0
   en_curve=1.d0
@@ -206,3 +212,20 @@ call dfftw_destroy_plan(planTF2)
 call dfftw_destroy_plan(planTB2)
 
 end subroutine
+ 
+!------------------------------------------------------------------------------
+!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+!%%%%% pulse envelope functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function cos2(time, tp, t_start, pulse_offset)
+ use global_vars, only: Nt
+ use data_au, only: pi
+ implicit none 
+ double precision:: time, tp, t_start, pulse_offset
+ double precision:: cos2
+ if (time .gt. (t_start+pulse_offset-tp/2) .and. time .lt. (t_start+pulse_offset+tp/2)) then
+   cos2 = cos((time - t_start-pulse_offset)*pi/tp)**2      
+ else
+   cos2 = 0.0d0
+ endif
+ end function

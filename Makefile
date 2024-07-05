@@ -1,6 +1,8 @@
+
 Machine = local
 FC	= gfortran 
-FFLAGS  = -fopenmp -O3 -w -fcheck=all -g 
+FFLAGS  = -fopenmp -O3 -w -fcheck=all -g
+outdir	= output_dir
 
 ifeq (${Machine},nias)
 fftw3lib_dir    = /scratch/Saurabh/FFTW3/install/lib64     #/home/me23jok/ProjectX/FFTW3/lib
@@ -23,7 +25,9 @@ default: 	dynamics
 
 dynamics:   	main.o\
 	propagation.o	setpot.o\
-	nuclear_wv.o	pulse.o
+	nuclear_wv.o	pulse.o\
+	$(outdir)/sometarget\
+	$(outdir)
 				
 		${FC} *.o ${FFLAGS} ${LDFLAGS} -o dynamics
 		
@@ -44,6 +48,12 @@ nuclear_wv.o:	nuclear_wv.f90
 
 pulse.o:	pulse.f90
 	${FC} pulse.f90 ${FFLAGS} -c -o pulse.o
+
+$(outdir)/sometarget:	| $(outdir)
+	touch output_dir/sometarget
+
+$(outdir):
+	mkdir -p output_dir
 
 clean:
 	rm -f *.o 
