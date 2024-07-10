@@ -1,5 +1,5 @@
 {
-  description = "Saurabh's Multilevel TDSE solver";
+  description = "Multilevel TDSE solver";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
