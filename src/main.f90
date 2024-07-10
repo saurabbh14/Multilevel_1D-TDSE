@@ -77,8 +77,8 @@ end module input_vars
 
 module global_vars
  use input_vars
- integer, parameter:: Nx=2048 !, NR=1024 !changed back  !This program has been edited to check momentum grid dependance on number of grid point
- !reverted  back the changes while running calculations(Change date: 11/03/20)
+ integer, parameter:: Nx=2048 !, NR=1024
+ character (150):: outdir
  double precision:: dR
  double precision, allocatable:: R(:), x(:)
  double precision, allocatable:: en(:)
@@ -158,7 +158,9 @@ use data_au
   call parse_command_line
   print*, "reading input:"
   print*, "General Inputs from", trim(input)
-  
+ 
+  outdir = "output_dir/"
+  call execute_command_line('mkdir -p output_dir')
   call read_input
   call p_grid
 
