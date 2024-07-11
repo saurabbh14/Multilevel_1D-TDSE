@@ -1,0 +1,12 @@
+1024                ! NR = number of grid points
+1.0, 1.0            ! m1=mass of H, m2=mass of H
+0.005                 ! dt           = time step in fs.
+60000               ! Nt           = Number of time steps.
+4                   ! Nstates      = Number of calculated excited states.
+19                  ! Vstates      = Number of calculated excited states.
+0.7                ! RI          = center of initial Gaussian in PROP_2D in 10^-10 m.
+-5.0               ! kappa        =  width of initial Gaussian in PROP_2D in 10^-10 m. (has to be negative)
+750, 800  !515., 1030.0	    ! lambda1 = wavelength of pulse in nm & lambda2
+5., 10., 0.1, 0.0   ! pulse duration (!not fwhm, it's cos**2 pulse), t_mid, E0 strength of laser pulse and phase in pi
+0., 0., 0, 0             !0.00053, 0.   ! pulse duration (not fwhm, it's cos**2 pulse), t_mid, E0 strength of laser pulse and phase in pi
+

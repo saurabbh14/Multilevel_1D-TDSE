@@ -1,5 +1,5 @@
 module commandline_args
-character(10000):: command_line
+character(2000):: command_line
 character(2000):: input
 
 !call read_command_line
@@ -16,30 +16,32 @@ contains
        command_line = ""
        call get_command(command = command_line,status = io)
        if (io==0) then
-         call get_command_argument(0,length = exenamelength,status = io2)
-         if (io2==0) then
-           command_line = "&cmd "//adjustl(trim(command_line(exenamelength+1:)))//" /"
-         else
-           command_line = "&cmd "//adjustl(trim(command_line))//" /"
-         end if
+          input = trim(command_line)
+! Uncomment if parsing of commandline is needed, i.e. multiple argments in the commandline         
+!         call get_command_argument(0,length = exenamelength,status = io2)
+!         if (io2==0) then
+!           command_line = "&cmd "//adjustl(trim(command_line(exenamelength+1:)))//" /"
+!         else
+!           command_line = "&cmd "//adjustl(trim(command_line))//" /"
+!         end if
        else
          write(*,*) io,"Error getting command line."
        end if
      end subroutine
 
-     subroutine parse_command_line
-       character(256) :: msg
-       namelist /cmd/ input, adb_pot, trans_dip
-       integer :: io
-
-       if (len_trim(command_line)>0) then
-         msg = ''
-         read(command_line,nml = cmd,iostat = io,iomsg = msg)
-         if (io/=0) then
-           error stop "Error parsing the command line or cmd.conf " // msg
-         end if
-       end if
-     end subroutine
+!     subroutine parse_command_line
+!       character(256) :: msg
+!       namelist /cmd/ input, adb_pot, trans_dip
+!       integer :: io
+!
+!       if (len_trim(command_line)>0) then
+!         msg = ''
+!         read(command_line,nml = cmd,iostat = io,iomsg = msg)
+!         if (io/=0) then
+!           error stop "Error parsing the command line or cmd.conf " // msg
+!         end if
+!       end if
+!     end subroutine
 
 
 end module commandline_args
@@ -71,14 +73,15 @@ module input_vars
  double precision:: lambda1, lambda2
 
 ! input files
+ character(2000):: input_datafile_dir
  character(2000):: adb_pot, trans_dip_prefix
+ character(2000):: output_data_dir
 
 end module input_vars
 
 module global_vars
  use input_vars
  integer, parameter:: Nx=2048 !, NR=1024
- character (150):: outdir
  double precision:: dR
  double precision, allocatable:: R(:), x(:)
  double precision, allocatable:: en(:)
@@ -159,8 +162,6 @@ use data_au
   print*, "reading input:"
   print*, "General Inputs from", trim(input)
  
-  outdir = "output_dir/"
-  call execute_command_line('mkdir -p output_dir')
   call read_input
   call p_grid
 
@@ -210,7 +211,7 @@ implicit none
  namelist /vib_states/Vstates
  namelist /ini_guess_wf/Ri, kappa
  namelist /laser_param/lambda1,lambda2,tp1,tp2,t_start1,t_start2,E01,E02,phi1,phi2
- namelist /input_files/adb_pot, trans_dip_prefix
+ namelist /input_files/input_datafile_dir,adb_pot, trans_dip_prefix, output_data_dir
 
  open(newunit=input_tk, file=input, status='old')
  read(input_tk, nml=grid)
@@ -247,6 +248,8 @@ implicit none
  print*, "Pulse midpoint (t_start):", t_start2, "fs"
  print*, "phi1:", phi2, "pi"
  read(input_tk,nml=input_files)
+ 
+ call execute_command_line('mkdir -p'// adjustl(trim(output_data_dir)))
 
   allocate(R(NR), x(Nx), en(NR))
   allocate(pR(NR), px(Nx))
@@ -294,7 +297,7 @@ implicit none
   tp2 = tp2 / au2fs  
   t_start1 = t_start1 / au2fs   
   t_start2 = t_start2 / au2fs   
-  fwhm = (4.d0 * dlog(2.d0)) / tp1**2 
+  fwhm = (4.d0 * log(2.d0)) / tp1**2 
   omega1=(1.d0 / (lambda1 * 1.d-7)) *cm2au
   omega2=(1.0d0/ (lambda2 *1.d-7))* cm2au
   phi1=phi1*pi
@@ -369,13 +372,15 @@ end subroutine
 !%%%%%% File read %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !------------------------------------------------------------------------------
 subroutine pot_read
-use global_vars, only:R, NR, adb, adb_pot
+use global_vars, only:R, NR, adb, adb_pot, input_datafile_dir
 use data_au
  implicit none
+ character(2000):: filepath
  integer:: I, pot_tk
  double precision:: dummy
- print*, "Potential surfaces:", trim(adb_pot)
- open(newunit=pot_tk,file=adjustl(trim(adb_pot)),status='unknown')
+ write(filepath,'(a,a)') adjustl(trim(input_datafile_dir)), adjustl(trim(adb_pot))  
+ print*, "Potential surfaces in path:", trim(filepath)
+ open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
  do I = 1, NR
    read(pot_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
@@ -393,11 +398,13 @@ end subroutine
 !------------------------------------------------------------------------------
 
 subroutine trans_dipole_read
-use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates
+use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
+       & input_datafile_dir, output_data_dir
  implicit none
  integer:: I, L, M
  character(2000):: fn
  double precision:: dummy
+
 
  print*, "Transition dipoles with file prefix", trim(trans_dip_prefix)
  mu_all = 0.d0
