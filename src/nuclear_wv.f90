@@ -7,12 +7,11 @@ subroutine nuclear_wavefkt(chi0)
  use omp_lib
 
 implicit none
-!  include "/usr/include/fftw3.f"
-
+  
   integer:: I, J, K, M, V, G   
   integer:: istep,void  
   integer*8 planF, planB
-  character(150):: filename
+  character(1000):: filename, filepath
      
   double precision:: dt2
   double precision:: E(vstates), E1, norm
@@ -27,12 +26,9 @@ implicit none
   double precision, allocatable, dimension(:):: psi, psi1
   double precision, allocatable, dimension(:,:):: ref
 
-  integer trans_dipole_tk
+  integer trans_dipole_tk, vib_en_tk
+  integer chi0_vib_en_tk, chi0_tk
 
- open(99,file='chi0.out',status='unknown')
- open(98,file='Evib.out',status='unknown')
- open(97,file='chi_indivisiual.out',status='unknown')
-! open(90,file='Morse_potential.out',status='unknown')
 
   allocate(psi(NR), psi1(NR))
   allocate(vprop(NR), ref(NR, Vstates))
@@ -75,7 +71,9 @@ implicit none
   print*
 
 
-
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "B0_Elelectronic-state-g", &
+        & int(J-1), "_vibstates.out"
+ open(newunit=chi0_tk,file=filepath,status='unknown')
 Nloop: do J = 1,1! Nstates ! varying the different adiabatic states
 
 
@@ -87,7 +85,13 @@ Nloop: do J = 1,1! Nstates ! varying the different adiabatic states
     print*, 'Dp =', adb(NR,J)*au2eV, 'eV'
     
     E = 0.d0
-
+ 
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "B0_Electronic-state-g", &
+        & int(J-1), "_Evib.out"
+ open(newunit=vib_en_tk,file=filepath,status='unknown')
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "B0_Electronic-state-g", &
+        & int(J-1), "_chi0-Evib.out"
+ open(newunit=chi0_vib_en_tk,file=filepath,status='unknown')
 Vloop:   do V = 1, Vstates ! loop over the vibrational state
 
 
@@ -148,13 +152,13 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
         endif
         print*,""
         
-        write(98,*) v, e(V)*au2ev
+      write(vib_en_tk,*) v, e(V)*au2ev
       
         do I = 1, NR
          ref(I,V) = psi(I)             ! storing as reference for the next loop
-         write(99,*) R(I)*au2a, ref(I,v)+E(V)*au2eV     
+         write(chi0_vib_en_tk,*) R(I)*au2a, ref(I,v)+E(V)*au2eV     
         end do
-        write(99,*)
+        write(chi0_vib_en_tk,*)
         exit
       elseif(K .eq. istep) then
         print*,'Iteration not converged!'
@@ -164,6 +168,8 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
         print*,'E1 =', E1 *au2eV
         print*,'thresh =', thresh *au2eV
         print*,'step =', K
+        write(filepath, '(a,a,i0,a,i0,a)') adjustl(trim(output_data_dir)), "Electronic-state-g", &
+                & int(J-1), "_vib-state", int(V-1), "_uncoverged-final-wf.out"
         do i = 1, nr
          write(102,*) i, psi(i)
         end do
@@ -175,7 +181,8 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
 
         
  end do Vloop               ! end of vibrational states loop
-
+ close(vib_en_tk)
+ close(chi0_vib_en_tk)
 ! total_pop = sum(exp(-E(:)/(kB*temperature)))
 ! print*, "total populations =", total_pop
 
@@ -214,20 +221,17 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
 ! enddo
          
 
+ do I=1,NR
+  write(chi0_tk,*) R(I)*au2a, ref(I,:)
+ enddo 
 
 end do Nloop            ! end of surface loop
-
- do I=1,NR
-  write(97,*) R(I)*au2a, ref(I,:)
- enddo 
+close(chi0_tk)
 
   chi0 = ref
 
   call dfftw_destroy_plan(planF)
   call dfftw_destroy_plan(planB)
-
-  close(99,status='keep')
-  close(98,status='keep')
 
  deallocate(psi, psi1, vprop, ref)
 

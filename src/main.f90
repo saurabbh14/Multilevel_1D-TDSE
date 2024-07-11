@@ -152,7 +152,6 @@ use data_au
  
  Real*4 st, ft,timer_elapsed_time
  double precision Emax
- double precision, allocatable, dimension(:,:,:):: ewf
  double precision, allocatable, dimension(:,:):: chi0
  double precision, allocatable:: El(:), Al(:)
   
@@ -161,28 +160,25 @@ use data_au
   call read_command_line
   !call parse_command_line
   print*, "reading input:"
-  print*, "General Inputs from", trim(input)
+  print*, "General Inputs from ", trim(input)
  
   call read_input
   call p_grid
 
   
- allocate(ewf(Nx,NR,Nstates))
  allocate(chi0(nr,vstates))
  allocate(El(Nt), Al(Nt)) 
 
 print*,"test"
-!!  call potential
 !print*,"test"    
 !  ewf = 0.d0
-! ! adb = 0.d0 
+!  adb = 0.d0 
 !
-!!  call adiabatic_surface(adb, ewf, mu_all)  
-!  call nuclear_wavefkt(chi0)
+!  call adiabatic_surface(adb, mu_all)  
+  call nuclear_wavefkt(chi0)
 !  call pulse(El, Al)
 !  call propagation_1D(chi0, El, Al)
-!  deallocate (adb, mu_all)
-! deallocate (ewf, chi0)
+  deallocate (adb, mu_all, chi0)
 
  call cpu_time(ft)
  print*,'Run time=', ft-st, 'seconds' 
@@ -251,9 +247,9 @@ implicit none
  print*, "phi1:", phi2, "pi"
  read(input_tk,nml=input_files)
  
- write(mk_out_dir, '(a,a)') "mkdir -p ", adjustl(trim(output_data_dir))
+ write(mk_out_dir, '(a)') , adjustl(trim(output_data_dir))
  print*, "creating output directory ", trim(mk_out_dir)
- call execute_command_line(adjustl(trim(mk_out_dir)))
+ call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
 
   allocate(R(NR), x(Nx), en(NR))
   allocate(pR(NR), px(Nx))
@@ -415,7 +411,7 @@ use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
  double precision:: dummy
 
 
- print*, "Transition dipoles with file prefix", trim(trans_dip_prefix)
+ print*, "Transition dipoles with file prefix \", trim(trans_dip_prefix), " \."
  mu_all = 0.d0
  !transition dipole moments of all states
  if (trim(trans_dip_prefix) .eq.'') then
