@@ -14,7 +14,8 @@ contains
        integer :: io, io2
 
        command_line = ""
-       call get_command(command = command_line,status = io)
+!       call get_command(command = command_line,status = io)
+       call get_command_argument(1,command_line,status = io)
        if (io==0) then
           input = trim(command_line)
 ! Uncomment if parsing of commandline is needed, i.e. multiple argments in the commandline         
@@ -73,7 +74,7 @@ module input_vars
  double precision:: lambda1, lambda2
 
 ! input files
- character(2000):: input_datafile_dir
+ character(2000):: input_data_dir
  character(2000):: adb_pot, trans_dip_prefix
  character(2000):: output_data_dir
 
@@ -158,7 +159,7 @@ use data_au
   call cpu_time(st)
   call system_clock(scount,rate)
   call read_command_line
-  call parse_command_line
+  !call parse_command_line
   print*, "reading input:"
   print*, "General Inputs from", trim(input)
  
@@ -171,17 +172,17 @@ use data_au
  allocate(El(Nt), Al(Nt)) 
 
 print*,"test"
-  call potential
-print*,"test"    
-  ewf = 0.d0
- ! adb = 0.d0 
-
-!  call adiabatic_surface(adb, ewf, mu_all)  
-  call nuclear_wavefkt(chi0)
-  call pulse(El, Al)
-  call propagation_1D(chi0, El, Al)
-  deallocate (adb, mu_all)
- deallocate (ewf, chi0)
+!!  call potential
+!print*,"test"    
+!  ewf = 0.d0
+! ! adb = 0.d0 
+!
+!!  call adiabatic_surface(adb, ewf, mu_all)  
+!  call nuclear_wavefkt(chi0)
+!  call pulse(El, Al)
+!  call propagation_1D(chi0, El, Al)
+!  deallocate (adb, mu_all)
+! deallocate (ewf, chi0)
 
  call cpu_time(ft)
  print*,'Run time=', ft-st, 'seconds' 
@@ -203,6 +204,7 @@ use global_vars
 use pot_param
 implicit none
  real*4 :: dummy, dummy2, dummy3, dummy4
+ character(200):: mk_out_dir
  integer:: i, j, input_tk
  namelist /grid/NR
  namelist /nucl_masses/m1,m2
@@ -211,7 +213,7 @@ implicit none
  namelist /vib_states/Vstates
  namelist /ini_guess_wf/Ri, kappa
  namelist /laser_param/lambda1,lambda2,tp1,tp2,t_start1,t_start2,E01,E02,phi1,phi2
- namelist /input_files/input_datafile_dir,adb_pot, trans_dip_prefix, output_data_dir
+ namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix, output_data_dir
 
  open(newunit=input_tk, file=input, status='old')
  read(input_tk, nml=grid)
@@ -249,7 +251,9 @@ implicit none
  print*, "phi1:", phi2, "pi"
  read(input_tk,nml=input_files)
  
- call execute_command_line('mkdir -p'// adjustl(trim(output_data_dir)))
+ write(mk_out_dir, '(a,a)') "mkdir -p ", adjustl(trim(output_data_dir))
+ print*, "creating output directory ", trim(mk_out_dir)
+ call execute_command_line(adjustl(trim(mk_out_dir)))
 
   allocate(R(NR), x(Nx), en(NR))
   allocate(pR(NR), px(Nx))
@@ -304,7 +308,7 @@ implicit none
   phi2=phi2*pi
   print*,'_________________________'
   print*
-  print*,'Parameters'
+  print*,'Final Parameters'
   print*,'_________________________'
   print*
   print*,'dt = ', SNGL(dt), 'a.u.'
@@ -372,13 +376,14 @@ end subroutine
 !%%%%%% File read %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !------------------------------------------------------------------------------
 subroutine pot_read
-use global_vars, only:R, NR, adb, adb_pot, input_datafile_dir
+use global_vars, only:R, NR, adb, adb_pot, &
+        & input_data_dir, output_data_dir
 use data_au
  implicit none
  character(2000):: filepath
  integer:: I, pot_tk
  double precision:: dummy
- write(filepath,'(a,a)') adjustl(trim(input_datafile_dir)), adjustl(trim(adb_pot))  
+ write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
  print*, "Potential surfaces in path:", trim(filepath)
  open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
  do I = 1, NR
@@ -386,7 +391,10 @@ use data_au
        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
  end do
  close(pot_tk)
- open(1061,file='H2+_BO_read.out',status='unknown')
+
+ write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(adb_pot)),&
+       & "_read.out"  
+ open(1061,file=adjustl(trim(filepath)),status='unknown')
  do I = 1, NR
    write(1061,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
@@ -399,10 +407,11 @@ end subroutine
 
 subroutine trans_dipole_read
 use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
-       & input_datafile_dir, output_data_dir
+       & input_data_dir, output_data_dir
  implicit none
  integer:: I, L, M
  character(2000):: fn
+ integer:: input_tk, output_tk
  double precision:: dummy
 
 
@@ -412,25 +421,25 @@ use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
  if (trim(trans_dip_prefix) .eq.'') then
   do L = 1, Nstates
    do M = L+1, Nstates
-     write(fn,fmt='(i0,i0,a)') L,M,'.dat'
+     write(fn,fmt='(a,i0,i0,a)') adjustl(trim(input_data_dir)),L,M,'.dat'
      print*, trim(fn)
-     open(unit=2000, file=adjustl(trim(fn)), form='formatted')
+     open(newunit=input_tk, file=adjustl(trim(fn)), form='formatted')
      do I = 1, NR
-       read(2000,*) dummy, mu_all(L,M,I)
+       read(input_tk,*) dummy, mu_all(L,M,I)
      enddo
-     close(2000)
+     close(input_tk)
    enddo
   enddo
  
   do L = 1, Nstates
    do M = L+1, Nstates
-     write(fn,fmt='(i0,i0,a)') L,M,'_read.out'
+     write(fn,fmt='(a,i0,i0,a)') adjustl(trim(output_data_dir)),L,M,'_read.out'
      print*, trim(fn)
-     open(unit=2001, file=adjustl(trim(fn)), form='formatted')
+     open(newunit=output_tk, file=adjustl(trim(fn)), form='formatted')
      do I=1,NR
-       write(2001,*) R(I), mu_all(L,M,I)
+       write(output_tk,*) R(I), mu_all(L,M,I)
      enddo
-     close(2001)
+     close(output_tk)
    enddo
   enddo
 
@@ -438,25 +447,27 @@ use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
 
   do L = 1, Nstates
    do M = L+1, Nstates
-     write(fn,fmt='(a,i0,i0,a)') adjustl(trim(trans_dip_prefix)),L,M,'.dat'
+     write(fn,fmt='(a,a,i0,i0,a)') adjustl(trim(input_data_dir)), &
+             & adjustl(trim(trans_dip_prefix)),L,M,'.dat'
      print*, trim(fn)
-     open(unit=2000, file=adjustl(trim(fn)), form='formatted')
+     open(newunit=input_tk, file=adjustl(trim(fn)), form='formatted')
      do I = 1, NR
-       read(2000,*) dummy, mu_all(L,M,I)
+       read(input_tk,*) dummy, mu_all(L,M,I)
      enddo
-     close(2000)
+     close(input_tk)
    enddo
   enddo
  
   do L = 1, Nstates
    do M = L+1, Nstates
-     write(fn,fmt='(a,i0,i0,a)') adjustl(trim(trans_dip_prefix)),L,M,'_read.out'
+     write(fn,fmt='(a,a,i0,i0,a)') adjustl(trim(output_data_dir)), &
+             & adjustl(trim(trans_dip_prefix)),L,M,'_read.out'
      print*, trim(fn)
-     open(unit=2001, file=adjustl(trim(fn)), form='formatted')
+     open(newunit=output_tk, file=adjustl(trim(fn)), form='formatted')
      do I=1,NR
-       write(2001,*) R(I), mu_all(L,M,I)
+       write(output_tk,*) R(I), mu_all(L,M,I)
      enddo
-     close(2001)
+     close(output_tk)
    enddo
   enddo
  endif
