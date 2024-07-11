@@ -246,21 +246,6 @@ implicit none
  print*, "phi1:", phi2, "pi"
  read(input_tk,nml=input_files)
 
-
-! open(10,file='input',status='old')
-!  
-!  read(10,*) NR                   ! NR = number of grid points
-!  read(10,*) m1, m2               ! m1=mass1, m2=mass2
-!  read(10,*) dt                   ! dt = time step in a.u.
-!  read(10,*) Nt                   ! Nt = number of time steps.	
-!  read(10,*) Nstates              ! Nstates = Number of calculated excited states.
-!  read(10,*) Vstates              ! Vstates = Number of calculated vibrational states.
-!  read(10,*) RI                   ! RI = center of initial Gaussian in 10^-10 m.
-!  read(10,*) kappa                ! kappa = width of initial Gaussian 
-!  read(10,*) lambda1, lambda2     ! wavelength of pulse
-!  read(10,*) tp1, t_start1, E01, phi1 
-!  read(10,*) tp2, t_start2, E02, phi2                  ! carrier-envelope phase
-  
   allocate(R(NR), x(Nx), en(NR))
   allocate(pR(NR), px(Nx))
   allocate(adb(NR,Nstates),mu_all(Nstates,Nstates,NR))
