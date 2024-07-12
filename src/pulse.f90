@@ -12,18 +12,18 @@ integer k, void, Nt2
 integer*8 planTF, planTB, planTF2, planTB2
 character(150) filename
 double precision time
-double precision E2(Nt), E21, E22, E(Nt)
+double precision E2(Nt), E21(Nt), E22(Nt), E(Nt)
 !double precision, allocatable:: E_dum(:), F_dum(:)
 complex*16, allocatable:: E_dum(:), F_dum(:)
 complex*16, allocatable:: E2_dum(:), F2_dum(:)
 double precision A01, A02
-double precision A2(Nt), A21, A22
+double precision A2(Nt), A21(Nt), A22(Nt)
 double precision A(Nt), E2_new(Nt)
 double precision IR(Nt), Eeff(Nt), IREeff(Nt), Eeff2(Nt)
-double precision cos2
+double precision cos2, trapazoidal ! envelope shapes
 double precision g1(Nt), g2(Nt), en_curve
 double precision time_end, time_start 
-double precision pulse_offset
+double precision pulse_offset, rise_time
 double precision dummy
 
 ! file tokens
@@ -34,19 +34,23 @@ integer:: IR_Eeff_field_tk
 integer:: IR_field_spec_tk, IR_field_time_tk
 integer:: Eeff_field_spec_tk, Eeff_field_time_tk
 
-write(filename,fmt='(a,f4.2,a)') 'Total_electric_field_phi', phi2/pi,'pi.out'
+write(filename,fmt='(a,a,f4.2,a)') adjustl(trim(output_data_dir)), &
+        & 'Total_electric_field_phi', phi2/pi,'pi.out'
 open(newunit=elec_field_tk, file=filename,status="unknown")
-write(filename,fmt='(a,f4.2,a)') 'Total_vector_field_phi', phi2/pi, 'pi.out'
+write(filename,fmt='(a,a,f4.2,a)') adjustl(trim(output_data_dir)), &
+        & 'Total_vector_field_phi', phi2/pi, 'pi.out'
 open(newunit=vec_field_tk, file=filename,status="unknown")
-write(filename,fmt='(a,f4.2,a,i0,a)') 'electric_field1_E', E01,'_width',Int(tp1*au2fs),'.out'
+write(filename,fmt='(a,a,f4.2,a,i0,a)') adjustl(trim(output_data_dir)), &
+        & 'electric_field1_E', E01,'_width',Int(tp1*au2fs),'.out'
 open(newunit=field1_tk, file=filename,status="unknown")
-write(filename,fmt='(a,f6.4,a,i0,a)') 'electric_field2_E', E02,'_width',Int(tp2*au2fs),'.out'
+write(filename,fmt='(a,a,f6.4,a,i0,a)') adjustl(trim(output_data_dir)), &
+        & 'electric_field2_E', E02,'_width',Int(tp2*au2fs),'.out'
 open(newunit=field2_tk, file=filename,status="unknown")
-write(filename,fmt='(a)') 'envelope1.out'
+write(filename,fmt='(a,a)') adjustl(trim(output_data_dir)), 'envelope1.out'
 open(newunit=envelope1_tk, file=filename,status="unknown")
-write(filename,fmt='(a)') 'envelope2.out'
+write(filename,fmt='(a,a)') adjustl(trim(output_data_dir)), 'envelope2.out'
 open(newunit=envelope2_tk, file=filename,status="unknown")
-write(filename,fmt='(a)') 'IR+2Eeff.dat'
+write(filename,fmt='(a,a)') adjustl(trim(output_data_dir)), 'IR+2Eeff.dat'
 open(newunit=IR_Eeff_field_tk, file=filename,status="unknown")
 
  print*
@@ -70,9 +74,10 @@ call dfftw_plan_dft_1d(planTB2, Nt, F2_dum, E2_dum, FFTW_BACKWARD, FFTW_ESTIMATE
 
 
 time_end = Nt*dt
-time_start = (t_start2- tp2/2)
+time_start = (t_mid2- tp2/2)
 pulse_offset = 0 !5*pi/omega2
-
+rise_time = 5 !fs
+rise_time = rise_time/au2fs
 
 tp1=tp1/(1-2/pi)
 E21 =0.d0
@@ -83,46 +88,53 @@ A01=E01/omega1
 A02=E02/omega2
 E2_New=0.d0
 
+ envelope_shape_laser1 = trim(envelope_shape_laser1)
+ envelope_shape_laser2 = trim(envelope_shape_laser2)
+ select case(envelope_shape_laser1)
+  case("cos2")
+   do K = 1, Nt
+    time = k*dt 
+    g1(k) = cos2(time,tp1,t_mid1,pulse_offset)
+   enddo
+
+  case("trapazoidal")
+    do K = 1, Nt
+      time = K*dt
+      g1(K) = trapazoidal(time, tp1, t_mid1, rise_time)
+    enddo
+  case default
+   print*, "Laser1: Default pulse shape is CW."
+ end select
+
+ select case(envelope_shape_laser2)
+  case("cos2")
+   do K = 1, Nt
+    time = k*dt 
+    g2(k) = cos2(time,tp1,t_mid2,pulse_offset)
+   enddo
+
+  case("trapazoidal")
+    do K = 1, Nt
+      time = K*dt
+      g2(K) = trapazoidal(time, tp2, t_mid2, rise_time)
+    enddo
+  case default
+   print*, "Laser1: Default pulse shape is CW."
+ end select
+ 
+ 
 
 timeloop: do K = 1, Nt
   time = k*dt 
-!  if (time .gt. (t_start1+pulse_offset-tp1/2) .and. time .lt. (t_start1+pulse_offset+tp1/2)) then
-!    g1(K) = (cos((time - t_start1-pulse_offset)*pi/tp1))**2      
-!    E21 = E01*(cos((time - t_start1-pulse_offset)*pi/tp1))**2 * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
-!    E21 = E01*g1(K) * cos(omega1 * (time-t_start1-pulse_offset)+phi1) &
-!            &  +(pi/(tp1*omega1)) *sin(2*(time-t_start1-pulse_offset)*pi/tp1) *sin(omega1*(time-t_start1-pulse_offset)+phi1)
-!    A21 = A01*(cos((time - t_start1-pulse_offset)*pi/tp1))**2 * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
-!  else
-!    g1(k) = 0.0d0      
-!    E21=0.0d0
-!    A21=0.0d0
-!  endif
-    g1(k) = cos2(time,tp1,t_start1,pulse_offset)
-    E21 = E01*g1(K) * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
-    A21 = A01*g1(K) * cos(omega1 * (time-t_start1-pulse_offset)+phi1)
-  write(field1_tk,*) time*au2fs, E21
-  write(envelope1_tk,*) time, A01*g1(K), 0.d0
-  en_curve=1.d0
-  if (time*omega2 .ge. time_start*omega2 .and. time*omega2 .le. 5.d0*pi+time_start*omega2) then
-!     g2(K) = time*omega2/(5.d0*pi) - time_start*omega2/(5.d0*pi) ! pi = lambda2*omega2/2*c
-     g2(K) = 1.d0/(1.d0+exp(-en_curve*((time-time_start)*omega2-2*pi)))
-     E22 = E02*g2(K)* cos(omega2 * (time_start-time)+phi2)
-     A22 = A02*g2(K)* sin(omega2 * (time_start-time)+phi2)
-  elseif (time*omega2 .ge. 5.d0*pi+time_start*omega2 .and. time*omega2 .le. 5.d0*pi+(tp2+time_start)*omega2) then
-     g2(K) = 1
-     E22 = E02*g2(K)* cos(omega2 * (time_start-time)+phi2)
-     A22 = A02*g2(K)* sin(omega2 * (time_start-time)+phi2)
-  elseif (time*omega2 .ge. 5.d0*pi+(tp2+time_start)*omega2) then !.and. time*omega2 .le. 8.d0*pi+(tp2+time_start)*omega2) then
-     g2(K) = 1.d0/(1.d0+exp(en_curve*((time-tp2-time_start)*omega2-8*pi)))!-(time*omega2)/(3.d0*pi) + (8.d0*pi+(tp2+time_start)*omega2)/(3.d0*pi)
-     E22 = E02*g2(K)* cos(omega2 * (time_start-time)+phi2)
-     A22 = A02*g2(K)* sin(omega2 * (time_start-time)+phi2)
-!  else
-!     g2(k)=0.0d0
-!     E22=0.0d0
-!     A22 =0.d0
-  endif
-  write(field2_tk,*) time*au2fs, E22
-  write(envelope2_tk,*) time, A02*g2(K), 0.d0
+  E21(K) = E01*g1(K) * cos(omega1 * (time-t_mid1-pulse_offset)+phi1)
+  A21(K) = A01*g1(K) * cos(omega1 * (time-t_mid1-pulse_offset)+phi1)
+  write(field1_tk,*) time*au2fs, E21(K), A21(K)
+  write(envelope1_tk,*) time, g1(K)
+
+  E22(K) = E02*g2(K)* sin(omega2 * (time-t_mid2-tp2/2-rise_time)+phi2)
+  A22(K) = A02*g2(K)* sin(omega2 * (time-t_mid2-tp2/2-rise_time)+phi2)
+  write(field2_tk,*) time*au2fs, E22(K), A22(K)
+  write(envelope2_tk,*) time, g2(K)
 
 !    E21 = E01 *exp(-fwhm * (time - t_start1)**2)* (cos(omega1 * time+phi1) &
 !       & - ((2.d0 * fwhm) / omega1) * (time - t_start1) * sin(omega1 * time+phi1))
@@ -130,8 +142,8 @@ timeloop: do K = 1, Nt
 !    E22 = E02 *exp(-fwhm * (time - t_start)**2)* (cos(omega2 * time+phi2))! &
       ! & - ((2.d0 * fwhm) / omega2) * (time - t_start) * sin(omega2 * time+phi2))
 
-    E2(K)=E21+E22
-    A2(K)=A21+A22
+    E2(K)=E21(K)+E22(K)
+    A2(K)=A21(K)+A22(K)
     E(K) = E2(K)
   !  E2(K)=0.0d0
     write(elec_field_tk,*) time*au2fs, E2(K), A2(K)
@@ -154,9 +166,11 @@ enddo timeloop
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%% IR field spectra %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-write(filename,fmt='(a,i0,a)') 'IR-field_spec_lambda',int(lambda1),'nm.dat'
+write(filename,fmt='(a,a,i0,a)') adjustl(trim(output_data_dir)), &
+        & 'IR-field_spec_lambda',int(lambda1),'nm.out'
 open(newunit=IR_field_spec_tk, file=filename,status="unknown")
-write(filename,fmt='(a,i0,a)') 'IR-field_time_lambda',int(lambda1),'nm.dat'
+write(filename,fmt='(a,a,i0,a)') adjustl(trim(output_data_dir)), &
+        & 'IR-field_time_lambda',int(lambda1),'nm.out'
 open(newunit=IR_field_time_tk, file=filename,status="unknown")
 E2_dum = E
 call dfftw_execute(planTF2,E2_dum, F2_dum)
@@ -228,4 +242,24 @@ function cos2(time, tp, t_start, pulse_offset)
  else
    cos2 = 0.0d0
  endif
- end function
+end function
+
+function trapazoidal(time, tp, t_mid, rise_time)
+ use global_vars, only: Nt
+ use data_au, only: pi
+ double precision:: time, tp, t_mid, rise_time
+ double precision:: trapazoidal, slope
+ 
+  if (time .ge. t_mid-(tp/2 + rise_time) .and. time .le. t_mid-tp/2) then
+     slope = 1.0d0/rise_time
+     trapazoidal = slope * time
+  elseif (time .gt. t_mid-tp/2 .and. time .le. t_mid+tp/2) then
+     trapazoidal = 1.d0
+  elseif (time .gt. t_mid+tp/2 .and. time .le. t_mid+(tp/2+rise_time)) then 
+     slope = -1.0d0/rise_time
+     trpazoidal = slope * time
+  else
+     trapazoidal = 0.0d0
+  endif
+
+end function

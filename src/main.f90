@@ -68,8 +68,9 @@ module input_vars
  double precision:: RI, kappa
 
 ! laser parameters
- double precision:: tp1, fwhm, t_start1
- double precision:: tp2, t_start2
+ character(150):: envelope_shape_laser1, envelope_shape_laser2
+ double precision:: tp1, fwhm, t_mid1
+ double precision:: tp2, t_mid2
  double precision:: e01, e02, phi1, phi2
  double precision:: lambda1, lambda2
 
@@ -130,8 +131,9 @@ end module pot_param
 module FFTW3
   use, intrinsic :: iso_c_binding
   include "fftw3.f03"
-!   include '/usr/include/fftw3.f03'                                        ! Desktop packet
-!   include '/home/me23jok/ProjectX/FFTW3/include/fftw3.f03' ! ARA cluster
+!
+!  include '/usr/include/fftw3.f03'                                        ! Desktop packet
+!  include '/home/me23jok/ProjectX/FFTW3/include/fftw3.f03' ! ARA cluster
 !  include '/usr/local/include/fftw3.f03'
 !  include '/scratch/Saurabh/FFTW3/install/include/fftw3.f03'  ! nias
 !  include '/home/me23jok/fftw-3.3.10/include/fftw3.f03' ! draco
@@ -176,7 +178,7 @@ print*,"test"
 !
 !  call adiabatic_surface(adb, mu_all)  
   call nuclear_wavefkt(chi0)
-!  call pulse(El, Al)
+  call pulse(El, Al)
 !  call propagation_1D(chi0, El, Al)
   deallocate (adb, mu_all, chi0)
 
@@ -208,7 +210,8 @@ implicit none
  namelist /elec_states/Nstates
  namelist /vib_states/Vstates
  namelist /ini_guess_wf/Ri, kappa
- namelist /laser_param/lambda1,lambda2,tp1,tp2,t_start1,t_start2,E01,E02,phi1,phi2
+ namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
+         & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2
  namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix, output_data_dir
 
  open(newunit=input_tk, file=input, status='old')
@@ -232,18 +235,20 @@ implicit none
  read(input_tk,nml=laser_param)
  print*, "Laser parameters:"
  print*, "Laser #1:"
+ print*, "Envelope shape:", trim(envelope_shape_laser1)
  print*, "Lambda:", lambda1, "nm"
  print*, "Electric field strength:", E01, "a.u."
  print*, "Pulse envelope: Cos**2"
  print*, "Pulse width (tp):", tp1, "fs"
- print*, "Pulse midpoint (t_start):", t_start1, "fs"
+ print*, "Pulse midpoint:", t_mid1, "fs"
  print*, "phi1:", phi1, "pi"
  print*, "Laser #2:"
+ print*, "Envelope shape:", trim(envelope_shape_laser2)
  print*, "Lambda:", lambda2, "nm"
  print*, "Electric field strength:", E02, "a.u."
  print*, "Pulse envelope: Cos**2"
  print*, "Pulse width (tp):", tp2, "fs"
- print*, "Pulse midpoint (t_start):", t_start2, "fs"
+ print*, "Pulse midpoint:", t_mid2, "fs"
  print*, "phi1:", phi2, "pi"
  read(input_tk,nml=input_files)
  
@@ -295,8 +300,8 @@ implicit none
   dt = dt / au2fs 
   tp1 = tp1 / au2fs  
   tp2 = tp2 / au2fs  
-  t_start1 = t_start1 / au2fs   
-  t_start2 = t_start2 / au2fs   
+  t_mid1 = t_mid1 / au2fs   
+  t_mid2 = t_mid2 / au2fs   
   fwhm = (4.d0 * log(2.d0)) / tp1**2 
   omega1=(1.d0 / (lambda1 * 1.d-7)) *cm2au
   omega2=(1.0d0/ (lambda2 *1.d-7))* cm2au
@@ -377,7 +382,7 @@ use global_vars, only:R, NR, adb, adb_pot, &
 use data_au
  implicit none
  character(2000):: filepath
- integer:: I, pot_tk
+ integer:: I, pot_tk, pot_out_tk
  double precision:: dummy
  write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
  print*, "Potential surfaces in path:", trim(filepath)
@@ -390,12 +395,12 @@ use data_au
 
  write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(adb_pot)),&
        & "_read.out"  
- open(1061,file=adjustl(trim(filepath)),status='unknown')
+ open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
  do I = 1, NR
-   write(1061,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+   write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
  end do
- close(1061)
+ close(pot_out_tk)
 
 end subroutine
 
