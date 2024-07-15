@@ -1,4 +1,4 @@
-subroutine nuclear_wavefkt(chi0)
+subroutine nuclear_wavefkt
 
  use global_vars
  use pot_param
@@ -14,24 +14,25 @@ implicit none
   character(1000):: filename, filepath
      
   double precision:: dt2
-  double precision:: E(vstates), E1, norm
+  double precision:: E1, norm
+  double precision, allocatable:: E(:)
   double precision:: CONS, thresh
   double precision:: dummy, R_e, D_e, alpha, Rin
-  double precision:: chi0(nr,vstates)
+!  double precision, allocatable:: chi0(:,:)
   double precision, parameter:: temperature=3100 
-  double precision:: total_pop, Boltzmann_populations(Vstates) 
-  double precision:: trans_dipole(Vstates,Vstates) 
+!  double precision:: total_pop, Boltzmann_populations(guess_Vstates) 
+!  double precision:: trans_dipole(guess_Vstates,guess_Vstates) 
  
   double precision, allocatable, dimension(:):: vprop
   double precision, allocatable, dimension(:):: psi, psi1
   double precision, allocatable, dimension(:,:):: ref
 
-  integer trans_dipole_tk, vib_en_tk
+  integer trans_dipole_tk, vib_en_tk, vstates_tk
   integer chi0_vib_en_tk, chi0_tk
 
 
   allocate(psi(NR), psi1(NR))
-  allocate(vprop(NR), ref(NR, Vstates))
+  allocate(vprop(NR), E(guess_vstates),ref(NR,guess_vstates))
 
  void=fftw_init_threads( )
  if (void==0) then
@@ -71,9 +72,8 @@ implicit none
   print*
 
 
- write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "B0_Elelectronic-state-g", &
-        & int(J-1), "_vibstates.out"
- open(newunit=chi0_tk,file=filepath,status='unknown')
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
+ open(newunit=vstates_tk,file=filepath,status='unknown')
 Nloop: do J = 1,1! Nstates ! varying the different adiabatic states
 
 
@@ -86,13 +86,13 @@ Nloop: do J = 1,1! Nstates ! varying the different adiabatic states
     
     E = 0.d0
  
- write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "B0_Electronic-state-g", &
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
         & int(J-1), "_Evib.out"
  open(newunit=vib_en_tk,file=filepath,status='unknown')
- write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "B0_Electronic-state-g", &
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
         & int(J-1), "_chi0-Evib.out"
  open(newunit=chi0_vib_en_tk,file=filepath,status='unknown')
-Vloop:   do V = 1, Vstates ! loop over the vibrational state
+Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
 
 
       do i = 1, NR  ! symmetry for the startup function
@@ -102,12 +102,8 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
       
       call integ_r(psi, psi, norm)
       psi = psi / sqrt(norm)
-      
-
 
 !.......... Imaginary Time Propagation ........................
-
-
 
     do K = 1, istep
 
@@ -127,14 +123,12 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
            end do
       end if
 
-
       psi = psi * vprop
       call dfftw_execute(planF)   
       psi = psi * exp((-dt2 * pR**2) / (2.d0*m_red))   
       call dfftw_execute(planB)   
       psi = psi / dble(Nr)         
       psi = psi * vprop
-
 
       call eigenvalue_r(psi, psi1, E(V), dt2)
       call integ_r(psi, psi, norm)
@@ -156,7 +150,7 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
       
         do I = 1, NR
          ref(I,V) = psi(I)             ! storing as reference for the next loop
-         write(chi0_vib_en_tk,*) R(I)*au2a, ref(I,v)+E(V)*au2eV     
+         write(chi0_vib_en_tk,*) R(I), ref(I,V)+E(V)*au2eV     
         end do
         write(chi0_vib_en_tk,*)
         exit
@@ -170,15 +164,20 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
         print*,'step =', K
         write(filepath, '(a,a,i0,a,i0,a)') adjustl(trim(output_data_dir)), "Electronic-state-g", &
                 & int(J-1), "_vib-state", int(V-1), "_uncoverged-final-wf.out"
+        open(102,file=filepath,status='unknown')
         do i = 1, nr
-         write(102,*) i, psi(i)
+         write(102,*) R(I), psi(i), abs(psi(I))**2
         end do
+        close(102)
         stop
       else
         cycle
       end if
   end do
-
+  if (E(V) .gt. adb(NR,J)) then
+     Vstates(J) = V-1
+     exit
+  endif
         
  end do Vloop               ! end of vibrational states loop
  close(vib_en_tk)
@@ -219,16 +218,26 @@ Vloop:   do V = 1, Vstates ! loop over the vibrational state
 !   !endif
 !   print*
 ! enddo
-         
+  
+ print*, "Number of bound vibrational states in the ", int(J-1), " electronic state:", Vstates(J)
+ write(vstates_tk,*) J-1, Vstates(J)
 
+ do v = 1, vstates(J)
  do I=1,NR
-  write(chi0_tk,*) R(I)*au2a, ref(I,:)
- enddo 
+   chi0(I, V, J) = ref(I, V)
+ enddo
+ enddo
 
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
+        & int(J-1), "_vibstates.out"
+ open(newunit=chi0_tk,file=filepath,status='unknown')
+  do I = 1, NR
+    write(chi0_tk,*) R(I), chi0(I,1:vstates(J), J)
+  enddo 
+  close(chi0_tk)
 end do Nloop            ! end of surface loop
-close(chi0_tk)
+close(vstates_tk)
 
-  chi0 = ref
 
   call dfftw_destroy_plan(planF)
   call dfftw_destroy_plan(planB)

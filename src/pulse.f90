@@ -20,7 +20,7 @@ double precision A01, A02
 double precision A2(Nt), A21(Nt), A22(Nt)
 double precision A(Nt), E2_new(Nt)
 double precision IR(Nt), Eeff(Nt), IREeff(Nt), Eeff2(Nt)
-double precision cos2, trapazoidal ! envelope shapes
+double precision cos2, trapazoidal, gaussian ! envelope shapes
 double precision g1(Nt), g2(Nt), en_curve
 double precision time_end, time_start 
 double precision pulse_offset, rise_time
@@ -93,10 +93,14 @@ E2_New=0.d0
  select case(envelope_shape_laser1)
   case("cos2")
    do K = 1, Nt
-    time = k*dt 
+    time = K*dt 
     g1(k) = cos2(time,tp1,t_mid1,pulse_offset)
    enddo
-
+  case("gaussian")
+   do K = 1, Nt
+    time = K*dt
+    g1(K) = gaussian(time, tp1, t_mid1)
+   enddo
   case("trapazoidal")
     do K = 1, Nt
       time = K*dt
@@ -112,7 +116,11 @@ E2_New=0.d0
     time = k*dt 
     g2(k) = cos2(time,tp1,t_mid2,pulse_offset)
    enddo
-
+  case("gaussian")
+   do K = 1, Nt
+    time = K*dt
+    g1(K) = gaussian(time, tp2, t_mid2)
+   enddo
   case("trapazoidal")
     do K = 1, Nt
       time = K*dt
@@ -129,18 +137,13 @@ timeloop: do K = 1, Nt
   E21(K) = E01*g1(K) * cos(omega1 * (time-t_mid1-pulse_offset)+phi1)
   A21(K) = A01*g1(K) * cos(omega1 * (time-t_mid1-pulse_offset)+phi1)
   write(field1_tk,*) time*au2fs, E21(K), A21(K)
-  write(envelope1_tk,*) time, g1(K)
+  write(envelope1_tk,*) time*au2fs, g1(K)
 
   E22(K) = E02*g2(K)* sin(omega2 * (time-t_mid2-tp2/2-rise_time)+phi2)
   A22(K) = A02*g2(K)* sin(omega2 * (time-t_mid2-tp2/2-rise_time)+phi2)
   write(field2_tk,*) time*au2fs, E22(K), A22(K)
-  write(envelope2_tk,*) time, g2(K)
+  write(envelope2_tk,*) time*au2fs, g2(K)
 
-!    E21 = E01 *exp(-fwhm * (time - t_start1)**2)* (cos(omega1 * time+phi1) &
-!       & - ((2.d0 * fwhm) / omega1) * (time - t_start1) * sin(omega1 * time+phi1))
-
-!    E22 = E02 *exp(-fwhm * (time - t_start)**2)* (cos(omega2 * time+phi2))! &
-      ! & - ((2.d0 * fwhm) / omega2) * (time - t_start) * sin(omega2 * time+phi2))
 
     E2(K)=E21(K)+E22(K)
     A2(K)=A21(K)+A22(K)
@@ -231,14 +234,14 @@ end subroutine
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%% pulse envelope functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function cos2(time, tp, t_start, pulse_offset)
+function cos2(time, tp, t_mid, pulse_offset)
  use global_vars, only: Nt
  use data_au, only: pi
  implicit none 
- double precision:: time, tp, t_start, pulse_offset
+ double precision:: time, tp, t_mid, pulse_offset
  double precision:: cos2
- if (time .gt. (t_start+pulse_offset-tp/2) .and. time .lt. (t_start+pulse_offset+tp/2)) then
-   cos2 = cos((time - t_start-pulse_offset)*pi/tp)**2      
+ if (time .gt. (t_mid+pulse_offset-tp/2) .and. time .lt. (t_mid+pulse_offset+tp/2)) then
+   cos2 = cos((time - t_mid-pulse_offset)*pi/tp)**2      
  else
    cos2 = 0.0d0
  endif
@@ -248,18 +251,31 @@ function trapazoidal(time, tp, t_mid, rise_time)
  use global_vars, only: Nt
  use data_au, only: pi
  double precision:: time, tp, t_mid, rise_time
- double precision:: trapazoidal, slope
+ double precision:: trapazoidal, slope, yc
  
   if (time .ge. t_mid-(tp/2 + rise_time) .and. time .le. t_mid-tp/2) then
      slope = 1.0d0/rise_time
-     trapazoidal = slope * time
+     yc = (t_mid -(tp/2 + rise_time)) * slope
+     trapazoidal = slope * time - yc
   elseif (time .gt. t_mid-tp/2 .and. time .le. t_mid+tp/2) then
      trapazoidal = 1.d0
   elseif (time .gt. t_mid+tp/2 .and. time .le. t_mid+(tp/2+rise_time)) then 
      slope = -1.0d0/rise_time
-     trpazoidal = slope * time
+     yc = (t_mid +tp/2 + rise_time) * slope
+     trapazoidal = slope * time - yc
   else
      trapazoidal = 0.0d0
   endif
 
+end function
+
+function gaussian(time, tp, t_mid)
+ use global_vars, only: Nt 
+ implicit none
+ double precision:: time, tp, t_mid
+ double precision:: gaussian, fwhm
+
+  fwhm = (4.d0 * log(2.d0)) / tp**2
+  gaussian = exp(-fwhm * (time - t_mid)**2)
+ 
 end function

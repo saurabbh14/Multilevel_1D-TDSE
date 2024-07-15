@@ -1,4 +1,4 @@
-subroutine propagation_1D(chi0, E, A)
+subroutine propagation_1D(E, A)
 
 use global_vars
 use pot_param
@@ -13,68 +13,40 @@ use omp_lib
  integer L, M, N, void
  integer*8 planF, planB
  integer eR
- real*4 dummy, dummy2, dummy3
- character(150):: filename, filename1, filename2
- character(150):: filename3, filename4, filename5
- character(150):: filename6, filename7, filename8
- character(150):: filename9
+ real*8 dummy, dummy2, dummy3
+ character(150):: filepath
 
  double precision dt2, time
  double precision c, sp, deR 
  double precision:: normpn(Nstates), spec(NR,Nstates)
- double precision E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates),norm1,norm_diss
+ double precision E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates)
+ double precision:: norm_diss, norm_bound
  double precision A(Nt)
  double precision evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
  double precision :: H_ac(NR,Nstates), Energy_axis(NR)
- double precision ::chi0(nr,vstates), Boltzmann_populations(Vstates)
+! double precision :: Boltzmann_populations(Vstates)
  double precision :: norm_overlap(Nstates),norm_outR(Nstates), norm_outP(Nstates)
  double precision :: norm_gesP(Nstates), norm_gP_over(Nstates)
- double precision :: vib_pop(Vstates) 
+ double precision :: vib_pop(guess_vstates,Nstates) 
  double precision, allocatable, dimension(:):: cof
  complex*16:: tout(Nstates,Nstates)
  complex*16, allocatable, dimension(:,:):: psi_ges, psi_out
- complex*16, allocatable, dimension(:):: psi_diss, psi_ex_diss
+ complex*16, allocatable, dimension(:):: psi_diss, psi_bound
  complex*16, allocatable, dimension(:,:):: psi_loc, psi_ges1
  complex*16, allocatable, dimension(:):: psi, kprop, kprop1
- complex*16, allocatable, dimension(:,:):: psi_out1, psi_outR
+ complex*16, allocatable, dimension(:,:):: psi_out1
+ complex*16, allocatable, dimension(:,:):: psi_outR, psi_outR1
  complex*16, allocatable, dimension(:,:):: psi_gesP
  complex*16, allocatable, dimension(:):: psi_chi
 
+ integer:: chi0_tk, vstates_tk
+ integer:: psi_1d_tk, cof_1d_tk
+ integer:: dens_1d_tk, ex_dens_1d_tk
+ integer:: avgR_1d_tk, avgpR_1d_tk
+ integer:: norm_1d_tk, norm_pn_1d_tk, field_1d_tk
+ integer:: accumulation_1d_tk, momt_1d_tk
+ integer:: vibpop_1d_tk
  
- open(100,file='psi0_1d.out',status='unknown') 
- open(101,file='cof_1d.out',status='unknown')
- open(102,file='effective_dipole.out',status='unknown')
- open(200,file='dens_1d.out',status='unknown')
- open(201,file='ex_dens_1d.out',status='unknown')
- open(800,file='R_1d.out',status='unknown')
- open(801,file='PR_1d.out',status='unknown')
- open(906,file='norm_pn_1d.out',status='unknown')
- open(909,file='field_1d.out',status='replace')
- open(999,file='accumulation.out',status='unknown')
- open(998,file='momentum_1d.out',status='unknown')
-! open(1000,file='norm.out')
-! open(1111,file='vib_pop.out',status='unknown')
-! open(1112,file='KER_spectra.out',status='unknown')
-!open(1001,file='dipcurves_3d.dat')
-! open(1002,file='Dissociation_yield.out',status='unknown')
-! open(1003,file='Ex_dissociation_yield.out',status='unknown')
- 
-  write(filename,fmt='(a,i0,a)') 'norm1D_lambda',int(lambda1),'nm.out'
-  open(908,file=filename,status='unknown')
-  write(filename1,fmt='(a,i0,a)') 'vibpop1D_lambda', int(lambda1),'nm.out'
-  open(1111,file=filename1,status='unknown')
-  write(filename2,fmt='(a)') 'Momentum_spectra_1g_1D.out'
-  open(1112,file=filename2,status='unknown')
-  write(filename3,fmt='(a)') 'Momentum_spctra_2u_1D.out'
-  open(1113,file=filename3,status='unknown')
-  write(filename2,fmt='(a)') 'Momentum_spectra_total_1D.out'
-  open(1122,file=filename2,status='unknown')
-  write(filename2,fmt='(a)') 'KER_spctra_1g_1D.out'
-  open(1114,file=filename2,status='unknown')
-  write(filename3,fmt='(a)') 'KER_spctra_2u_1D.out'
-  open(1115,file=filename3,status='unknown')
-  write(filename2,fmt='(a)') 'KER_spctra_total_1D.out'
-  open(1144,file=filename2,status='unknown')
 !  write(filename4,fmt='(a,f4.2,a,f4.2,a,f4.2,a)') 'dens_1D_HeH+_mH',m1/mass,'_mHe',m2/mass,'_mr',mr,'.out'
 !  open(200,file=filename4,status='unknown')
 !  write(filename5,fmt='(a,f4.2,a,f4.2,a,f4.2,a)') 'ex_dens_1D_HeH+_mH',m1/mass,'_mHe',m2/mass,'_mr',mr,'.out'
@@ -89,7 +61,8 @@ use omp_lib
  allocate(psi(NR),kprop(NR),psi_ges(NR,Nstates),cof(NR),kprop1(NR))
  allocate(psi_loc(nr,Nstates), psi_out(nr,Nstates))
  allocate(psi_out1(nr,Nstates), psi_outR(nr,Nstates),psi_gesP(nr,Nstates))
- allocate(psi_chi(Vstates),psi_diss(NR),psi_ex_diss(NR))
+ allocate(psi_outR1(NR,Nstates))
+ allocate(psi_chi(guess_vstates),psi_diss(NR),psi_bound(NR))
 
  print*
  print*,'Tuning FFTW...'
@@ -106,15 +79,29 @@ use omp_lib
              
  print*,'Done.'
  print*  
-     
+  
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
+ open(newunit=vstates_tk,file=filepath,status='unknown')
+ chi0 = 0.d0
+ do N = 1, 1 
+  read(vstates_tk,*) II, Vstates(N)
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
+         & int(N-1), "_vibstates.out"
+  open(newunit=chi0_tk,file=filepath,status='unknown')
+  do I=1,NR
+    read(chi0_tk,*) dummy, chi0(I,1:Vstates(N),N)
+  enddo 
+  close(chi0_tk)
+ enddo
+ close(vstates_tk)
+
  psi_ges = (0.d0,0.d0)    
- 
  do I = 1, NR
 !   psi_ges(I,1) = (0.55d0*chi0(I,1)+0.23d0*chi0(I,2)+0.11d0*chi0(I,3) &
 !                 & + 0.07d0 * chi0(I,4) + 0.04d0*chi0(I,5)+ 2.0450413213653231E-002*chi0(I,6) &
 !                 & + 1.4033977605843639E-002 *chi0(I,7)+ 1.0613089628800979E-002*chi0(I,8) &
 !                 & + 8.8496818475779886E-003*chi0(I,9)+ 8.0611229210941892E-003*chi0(I,10))   !Thermal distribution over vibrational levels
-   psi_ges(I,1) = chi0(I, 1) !exp(kappa*(R(I)-RI)**2) !sqrt(0.55d0)*chi0(I,1)+sqrt(0.23d0)*chi0(I,2)+sqrt(0.11d0)*chi0(I,3) &
+   psi_ges(I,1) = chi0(I,1,1) !exp(kappa*(R(I)-RI)**2) !sqrt(0.55d0)*chi0(I,1)+sqrt(0.23d0)*chi0(I,2)+sqrt(0.11d0)*chi0(I,3) &
                  !& +sqrt( 0.07d0 )* chi0(I,4) + sqrt(0.04d0)*chi0(I,5) ! + sqrt(2.0450413213653231E-002)*chi0(I,6) &
 !                 & +sqrt( 1.4033977605843639E-002) *chi0(I,7)+ sqrt(1.0613089628800979E-002)*chi0(I,8) &
 !                 & +sqrt( 8.8496818475779886E-003)*chi0(I,9)+ sqrt(8.0611229210941892E-003)*chi0(I,10)   !Thermal distribution over vibrational levels
@@ -131,54 +118,57 @@ use omp_lib
 
  
  call integ(psi_ges, norm) 
- print*,'norm =', sngl(norm) 
+ print*,'Initial norm:', sngl(norm) 
   
  psi_ges(:,1) = psi_ges(:,1) / sqrt(norm(1))
  
  call integ(psi_ges, norm)
- print*,'norm =', sngl(norm) 
+ print*,'norm after normalization:', sngl(norm) 
  
-
- do I = 1, NR      
-  write(100,*) sngl(R(I) *au2a),sngl(abs(psi_ges(I,1))**2)         
-  write(101,*) sngl(r(I)*au2a), sngl(cof(i))
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi0_1d.out"
+ open(newunit=psi_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "cof_1d.out"
+ open(newunit=cof_1d_tk,file=filepath,status='unknown') 
+ do I = 1, NR
+  write(psi_1d_tk,*) sngl(R(I)),sngl(abs(psi_ges(I,1))**2)
+  write(cof_1d_tk,*) sngl(R(I)), sngl(cof(i))
  end do
-close(102)
+close(psi_1d_tk)
+close(cof_1d_tk)
 
            
 !______________________________________________________________________
 !                                                                     
 !                   Propagation Loop                         
-!______________________________________________________________________                                                                     
+!______________________________________________________________________   
+
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_1d.out"
+ open(newunit=norm_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "density_1d.out"
+ open(newunit=dens_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "ex_density_1d.out"
+ open(newunit=ex_dens_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgR_1d.out"
+ open(newunit=avgR_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgPR_1d.out"
+ open(newunit=avgpR_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_pn_1d.out"
+ open(newunit=norm_pn_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "field_1d.out"
+ open(newunit=field_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "accumulation_1d.out"
+ open(newunit=accumulation_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "momentum_1d.out"
+ open(newunit=momt_1d_tk,file=filepath,status='unknown') 
+ write(filepath,'(a,a)') adjustl(trim(output_data_dir)), 'vibpop1D_lambda.out'
+ open(newunit=vibpop_1d_tk,file=filepath,status='unknown')
 
  print*
  print*,'1D propagation...'
  print*
-
-!   do I=1,NR
-!     read(1000,*) dummy, mu(i,1), mu(i,2), mu(i,3)
-!   enddo
     
-  psi_out=0.00d0
-  do I=1,NR
-    psi_out(I,:)=psi_ges(I,:)*(1.0d0-cof(I))
-  enddo
-
-
-  do J = 1,1
-    do I = 1,NR
-      psi(I) = psi_out(I,J)  ! Hilfsgroesse
-    end do
-      call dfftw_execute(planF)
-      psi = psi /sqrt(dble(nr))
-    do I = 1,NR
-      psi_out(I,J) = psi(I)
-    end do
-  end do
+ psi_out=(0.d0,0.d0)
  
-! kap =1.d0
-! call pulse(E,A)  
-!E22=0.0d0
 timeloop: do K = 1, Nt
 
     time = K * dt
@@ -187,137 +177,89 @@ timeloop: do K = 1, Nt
     psi=0.0d0
     momt=0.0d0
     norm_out=0.00d0
-
-
-! if(K .lt. 1720) then
-! if(K .lt. 1800) then  ! k = 1800, t = 9 fs
-!    write(800,*) sngl(time*au2fs), RI
-!    cycle
-!endif
- 
-
     
     do J = 1,Nstates
-      do I = 1,NR
-         psi(I) = psi_ges(I,J)  ! Hilfsgroesse
-      end do 
-       call dfftw_execute(planF)
-       psi = psi * kprop
-       call dfftw_execute(planB)
-       psi = psi / dble(NR)
- 
-      do I = 1,NR
-        psi_ges(I,J) = psi(I)
-      end do      
+      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
+      call dfftw_execute(planF)
+      psi = psi * kprop
+      call dfftw_execute(planB)
+      psi = psi / dble(NR)
+      psi_ges(:,J) = psi(:)      
     end do
- 
- 
-
-    
+     
    do i = 1, NR
-!    mu_all(i,1,2)=0.8*R(I)
-!    mu_all(i,2,1)=0.8*R(I)
     call pulse2(tout, mu_all(:,:,I), E(K)) 
-!    tout(1,1) = cos(-kap*mu_all(I,1,2)*E(K)*dt)
-!    tout(1,2) = -im*sin(-kap*mu_all(I,1,2)*E(K)*dt)
-!    tout(2,1) = tout(1,2)
-!    tout(2,2) = tout(1,1)
-
-!     print*, "tout 2"
-!     write( * , * ) ((tout(l,j),j=1,Nstates), l=1,Nstates)
-!    stop
-!    psi_ges(i,1:2) = matmul(tout(1:2,1:2),psi_ges(i,1:2))  
     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
    end do
     
 
    do j = 1, Nstates   
-    do i = 1, NR  
-!    psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
-!            & +(mr-0.5)*R(I))*E(K) +lam*R(I)*E(K)))!+H_ac(i,j))) !         
-!    psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
-!            & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
-    psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j))) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
-    end do
+!      psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
+!              & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
+      psi_ges(:,j) = psi_ges(:,j) * exp(-im * dt * adb(:,j)) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
    end do
-  
- 
-  
-    do J = 1,Nstates
-      do I = 1,NR
-         psi(I) = psi_ges(I,J)  ! Hilfsgroesse
-      end do 
-      call dfftw_execute(planF) 
-      psi = psi * kprop 
-      psi = psi /sqrt(dble(nr))     
-      do i = 1, nr
-        epr(j) = epr(j) + abs(psi(i))**2 * pr(i)
-      end do
-      epr(j) = epr(j) * dr
-      call dfftw_execute(planB)
-      psi = psi / sqrt(dble(NR))
-
-      do I = 1,NR
-         psi_ges(I,J) = psi(I)
-      end do      
-    end do     
+    
+   do J = 1,Nstates
+     psi(:) = psi_ges(:,J)  ! Hilfsgroesse
+     call dfftw_execute(planF) 
+     psi = psi * kprop 
+     psi = psi /sqrt(dble(nr))     
+     epr(j) =  sum(abs(psi(:))**2 * pr(:))
+     epr(j) = epr(j) * dr
+     call dfftw_execute(planB)
+     psi = psi / sqrt(dble(NR))
+     psi_ges(:,J) = psi(:)      
+   end do     
  
 
 !-----------------------------------------
 
   
-   do I = 1, NR   
-    evR(1) = evR(1) + abs(psi_ges(I,1))**2 * R(I)
-    evR(2) = evR(2) + abs(psi_ges(I,2))**2 * R(I)
-    psi_loc(i,1) = 1.d0/sqrt(2.d0)*(psi_ges(i,1) + psi_ges(i,2))
-    psi_loc(i,2) = 1.d0/sqrt(2.d0)*(psi_ges(i,1) - psi_ges(i,2))
-   end do   
-    evR = evR * dR
+   do N = 1, Nstates
+    evR(N) = evR(N) + sum(abs(psi_ges(:,N))**2 * R(:))
+   enddo
+   evR = evR * dR
+   psi_loc(:,1) = 1.d0/sqrt(2.d0)*(psi_ges(:,1) + psi_ges(:,2))
+   psi_loc(:,2) = 1.d0/sqrt(2.d0)*(psi_ges(:,1) - psi_ges(:,2))
 
-
-
-
-    call integ(psi_ges, norm)    
-    call integ(psi_loc, normPn)
-    
-
-    do j = 1,Nstates
-       if (norm(j).ge.1.d-8) then
-        evR(j) = evR(j)/norm(j)
-        epr(j) = epr(j)/norm(j)
-       end if
-    end do
+   call integ(psi_ges, norm)    
+   call integ(psi_loc, normPn)
+ 
+   do j = 1,Nstates
+      if (norm(j).ge.1.d-8) then
+       evR(j) = evR(j)/norm(j)
+       epr(j) = epr(j)/norm(j)
+      end if
+   end do
     
 ! ------------ Popolation analysis in vibrational states ----------------------
-   vib_pop = 0.d0
-   do J=1,(vstates-1)
-   psi_chi(J)=0.0d0
+  vib_pop = 0.d0
+  do N = 1, 1 !Nstates
+   do L=1,vstates(N)
+   psi_chi(L)=0.0d0
    do I=1, NR
-    psi_chi(J)=psi_chi(J)+ chi0(I,J) * (psi_ges(I,1))
+    psi_chi(L)=psi_chi(L)+ chi0(I,L,N) * (psi_ges(I,1))
    enddo
-    psi_chi(J)=psi_chi(J)*dR
-    vib_pop(J)=abs(psi_chi(J)**2)
+    psi_chi(L)=psi_chi(L)*dR
+    vib_pop(L,N)=abs(psi_chi(L)**2)
    enddo
+  enddo
 
-
-    write(1111,*) sngl(time*au2fs), (vib_pop(1)), (vib_pop(2)), (vib_pop(3)), (vib_pop(4)),&
-                 &  vib_pop(5), vib_pop(6), vib_pop(7), vib_pop(8), vib_pop(9),&
-                 &  vib_pop(10), vib_pop(11), vib_pop(12), sum(vib_pop(:)) 
-         
+   write(vibpop_1d_tk,*) sngl(time*au2fs), vib_pop(1:vstates(1),1) 
      
-    write(800,*) sngl(time *au2fs), sngl(evR)
-    write(801,*) sngl(time *au2fs), sngl(epr)
-    write(908,*) sngl(time *au2fs), norm
-    write(906,*) sngl(time *au2fs), sngl(normPn)
-    write(909,*) sngl(time *au2fs), sngl(E(K))      
+   write(avgR_1d_tk,*) sngl(time *au2fs), sngl(evR)
+   write(avgpR_1d_tk,*) sngl(time *au2fs), sngl(epr)
+   write(norm_1d_tk,*) sngl(time *au2fs), norm
+   write(norm_pn_1d_tk,*) sngl(time *au2fs), sngl(normPn)
+   write(field_1d_tk,*) sngl(time *au2fs), sngl(E(K))      
 
    if(mod(K,100).eq.0) then
     do I = 1, NR/2   
-    write(200,*) sngl(time *au2fs), sngl(R(I) *au2a), sngl(abs(psi_ges(I,1)**2))
-    write(201,*) sngl(time *au2fs), sngl(R(I) *au2a), sngl(abs(psi_ges(I,2)**2))
+      write(dens_1d_tk,*) sngl(time *au2fs), sngl(R(I)), sngl(abs(psi_ges(I,1)**2))
+      write(ex_dens_1d_tk,*) sngl(time *au2fs), sngl(R(I)), sngl(abs(psi_ges(I,2:Nstates)**2))
     end do 
-    write(200,*)
-    write(201,*)
+    write(dens_1d_tk,*)
+    write(ex_dens_1d_tk,*)
   
    end if  
  
@@ -361,10 +303,12 @@ timeloop: do K = 1, Nt
 !     psi_out(i,j)=psi_out(i,j)*kprop1(I)
 !    enddo
 !   enddo
+   
+   do J = 1, Nstates
+     psi_outR(:,J) = psi_outR(:,J) * kprop1(:)
 
-   do i = 1, NR
-    psi_outR(i,:) = psi_ges(i,:) * (1.0d0-cof(i))
-    psi_ges(i,:) = psi_ges(i,:) * cof(i) ! psi_ges = psi_nondiss
+     psi_outR1(:,J) = psi_ges(:,J) * (1.0d0-cof(:))
+     psi_ges(:,J) = psi_ges(:,J) * cof(:) ! psi_ges = psi_nondiss
    enddo
 
 !   norm_overlap(1)=2.0d0*dot_product(psi_outR(:,1),psi_ges(:,1))*dr
@@ -373,18 +317,14 @@ timeloop: do K = 1, Nt
 !   call integ(psi_outR,norm_outR)
 !   norm1=norm1+norm_overlap(1)+norm_overlap(2)+norm_outR(1)+norm_outR(2)
 !
-!   do j=1,Nstates
-!     do i=1,nr
-!      psi(i)=psi_outR(i,j)
-!     end do
-! 
-!      call dfftw_execute(planF)
-!      psi=psi/sqrt(dble(nr))
-!     do i=1,NR
-!      psi_outR(i,j)=psi(i)
-!     enddo
-!   enddo
-!
+   do J=1,Nstates
+     psi(:)=psi_outR1(:,j)
+     call dfftw_execute(planF)
+     psi=psi/sqrt(dble(nr))
+     psi_outR1(:,J)=psi(:)
+   enddo
+   psi_outR = psi_outR + psi_outR1
+
 !   psi_gesP=psi_ges
 !   do j=1,Nstates
 !     do i=1,nr
@@ -436,73 +376,86 @@ timeloop: do K = 1, Nt
 ! ------------   
 
 end do timeloop
+!  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), &
+!          & 'Momentum_spectra_1d.out'
+!  open(momt_spec_1d_tk,file=filename2,status='unknown')
+!  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), &
+!          & 'Momentum_spectra_total_1D.out'
+!  open(1122,file=filename2,status='unknown')
+!  write(filename2,fmt='(a)') 'KER_spctra_1g_1D.out'
+!  open(1114,file=filename2,status='unknown')
+!  write(filename3,fmt='(a)') 'KER_spctra_2u_1D.out'
+!  open(1115,file=filename3,status='unknown')
+!  write(filename2,fmt='(a)') 'KER_spctra_total_1D.out'
+!  open(1144,file=filename2,status='unknown')
   
-!KER spectra
-  psi_diss=0.0d0
-  do J=1,vstates
-  psi_chi(J)=0.0d0
-  do I=1, NR
-   psi_chi(J)=psi_chi(J)+ chi0(I,J) * (psi_ges(I,1))
+!Final vibrastional poppulation in ground state
+  do N =1, 1
+    print*, "Final vibrational poppulation in the ground state"
+    psi_bound = 0.0d0
+    do J = 1,vstates(N)
+    psi_chi(J) = 0.0d0
+    do I = 1, NR
+     psi_chi(J) = psi_chi(J)+ chi0(I,J,N) * (psi_ges(I,1))
+    enddo
+     psi_chi(J) = psi_chi(J)*dR
+    do I = 1,NR
+     psi_bound(I) = psi_bound(I)+psi_chi(J)*chi0(I,J,N)
+    enddo
+    norm_bound = sum(abs(psi_bound(:))**2)*dR
+    print*, 'Vibpop (',J,') =',norm_bound
+    enddo
   enddo
-   psi_chi(J)=psi_chi(J)*dR
-  do I=1,NR
-   psi_diss(I)=psi_diss(I)+psi_chi(J)*chi0(I,J)
-  enddo
-  norm_diss=sum(abs(psi_diss(:))**2)*dR
-  print*, 'Diss_yield (',J,') =',norm_diss
-  enddo
-  
 
-  psi_diss(:)=psi_ges(:,1)-psi_diss(:)
-!   psi_diss(:)=psi_diss(:)+psi_ges(:,2)
+!  psi_diss(:)=psi_ges(:,1)-psi_bound(:)
+!  psi = psi_diss
+!  call dfftw_execute(planF)
+!  psi=psi/sqrt(dble(NR))
+!  psi_diss=psi
+!  norm_diss=sum(abs(psi_diss(:))**2)*dR
+!  write(*,*) "Dissociation yield 1g =",norm_diss
+!  write(*,*) lambda1,norm_diss
+!  psi_diss=psi_diss/sqrt(norm_diss)
+!   do I=NR/2 +1,NR
+!     write(1112,*) pR(I),abs(psi_diss(I))**2
+!   enddo
+!   do I=1,NR/2
+!     write(1112,*) pR(I),abs(psi_diss(I))**2
+!     write(1114,*) (pR(I)**2/(2*m_red)),abs(psi_diss(I))**2
+!   enddo
+!
+!  psi(:)=psi_ges(:,2)
+!  call dfftw_execute(planF)
+!  psi=psi/sqrt(dble(NR))
+!  psi_ges(:,2)=psi(:)
+!  norm_diss=sum(abs(psi_ges(:,2))**2)*dR
+!  write(*,*) "Dissociation yield 2u =",norm_diss
+!  write(*,*) lambda1, norm_diss
+!  psi_ges(:,2)=psi_ges(:,2)/sqrt(norm_diss)
+!   do I=NR/2 +1,NR
+!     write(1113,*) pR(I),abs(psi_ges(I,2))**2
+!   enddo
+!   do I=1,NR/2
+!     write(1113,*) pR(I),abs(psi_ges(I,2))**2
+!     write(1115,*) (pR(I)**2/(2*m_red)),abs(psi_ges(I,2))**2
+!   enddo
+!  
+!!   psi_diss(:)=psi_diss(:)+psi_ges(:,2)
+!  
+!  psi(:)=psi_diss(:)+ psi_ges(:,2)
+!  call dfftw_execute(planF)
+!  psi=psi/sqrt(dble(NR))
+!  norm_diss=sum(abs(psi(:))**2)*dR
+!  write(*,*) "Dissociation yield 1g =",norm_diss
+!  psi=psi/sqrt(norm_diss)
+!   do I=NR/2 +1,NR
+!     write(1122,*) pR(I),abs(psi(I))**2
+!   enddo
+!   do I=1,NR/2
+!     write(1122,*) pR(I),abs(psi(I))**2
+!     write(1144,*) (pR(I)**2/(2*m_red)),abs(psi(I))**2
+!   enddo
   
-  psi(:)=psi_diss(:)+ psi_ges(:,2)
-  call dfftw_execute(planF)
-  psi=psi/sqrt(dble(NR))
-  norm_diss=sum(abs(psi(:))**2)*dR
-  write(*,*) "Dissociation yield 1g =",norm_diss
-  psi=psi/sqrt(norm_diss)
-   do I=NR/2 +1,NR
-     write(1122,*) pR(I),abs(psi(I))**2
-   enddo
-   do I=1,NR/2
-     write(1122,*) pR(I),abs(psi(I))**2
-     write(1144,*) (pR(I)**2/(2*m_red)),abs(psi(I))**2
-   enddo
-
-  
-  
-  psi=psi_diss
-  call dfftw_execute(planF)
-  psi=psi/sqrt(dble(NR))
-  psi_diss=psi
-  norm_diss=sum(abs(psi_diss(:))**2)*dR
-  write(*,*) "Dissociation yield 1g =",norm_diss
-  write(*,*) lambda1,norm_diss
-  psi_diss=psi_diss/sqrt(norm_diss)
-   do I=NR/2 +1,NR
-     write(1112,*) pR(I),abs(psi_diss(I))**2
-   enddo
-   do I=1,NR/2
-     write(1112,*) pR(I),abs(psi_diss(I))**2
-     write(1114,*) (pR(I)**2/(2*m_red)),abs(psi_diss(I))**2
-   enddo
-
-  psi(:)=psi_ges(:,2)
-  call dfftw_execute(planF)
-  psi=psi/sqrt(dble(NR))
-  psi_ges(:,2)=psi(:)
-  norm_diss=sum(abs(psi_ges(:,2))**2)*dR
-  write(*,*) "Dissociation yield 2u =",norm_diss
-  write(*,*) lambda1, norm_diss
-  psi_ges(:,2)=psi_ges(:,2)/sqrt(norm_diss)
-   do I=NR/2 +1,NR
-     write(1113,*) pR(I),abs(psi_ges(I,2))**2
-   enddo
-   do I=1,NR/2
-     write(1113,*) pR(I),abs(psi_ges(I,2))**2
-     write(1115,*) (pR(I)**2/(2*m_red)),abs(psi_ges(I,2))**2
-   enddo
 
 !   do I=NR/2 +1,NR
 !     write(2222,*) 0.1*(II-1), pR(I), (pR(I)**2)/(2*m_red),abs(psi_diss(I))**2

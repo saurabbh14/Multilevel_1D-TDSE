@@ -56,7 +56,8 @@ module input_vars
  integer:: Nstates
 
 ! vibrational states
- integer:: Vstates
+ integer:: guess_vstates
+ integer, allocatable:: Vstates(:)
  
 ! time grid 
  integer:: Nt
@@ -88,7 +89,7 @@ module global_vars
  double precision, allocatable:: R(:), x(:)
  double precision, allocatable:: en(:)
  double precision, allocatable:: Px(:),PR(:)
- double precision, allocatable:: Pot(:,:)
+ double precision, allocatable:: Pot(:,:), chi0(:,:,:)
  double precision, allocatable, dimension(:,:,:):: mu_all
  double precision, allocatable, dimension(:,:):: adb
  double precision:: kap, lam
@@ -151,10 +152,11 @@ use data_au
  INTEGER :: scount,  & ! Starting "time"
            ecount ! Ending "time"
  integer  rate       ! number of clock ticks per second
- 
- Real*4 st, ft,timer_elapsed_time
+
+ Real*8 st, ft,timer_elapsed_time
+ character(150):: filepath
+ logical ext
  double precision Emax
- double precision, allocatable, dimension(:,:):: chi0
  double precision, allocatable:: El(:), Al(:)
   
   call cpu_time(st)
@@ -166,9 +168,8 @@ use data_au
  
   call read_input
   call p_grid
-
-  
- allocate(chi0(nr,vstates))
+  allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
+  chi0 = 0.d0
  allocate(El(Nt), Al(Nt)) 
 
 print*,"test"
@@ -176,10 +177,17 @@ print*,"test"
 !  ewf = 0.d0
 !  adb = 0.d0 
 !
-!  call adiabatic_surface(adb, mu_all)  
-  call nuclear_wavefkt(chi0)
+!  call adiabatic_surface(adb, mu_all) 
+do J = 1, 1
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
+        & int(J-1), "_vibstates.out"
+  inquire(file=filepath, Exist=Ext)
+  print*, filepath, Ext
+  if (.not. Ext) call nuclear_wavefkt
+enddo
+
   call pulse(El, Al)
-!  call propagation_1D(chi0, El, Al)
+  call propagation_1D(El, Al)
   deallocate (adb, mu_all, chi0)
 
  call cpu_time(ft)
@@ -208,7 +216,7 @@ implicit none
  namelist /nucl_masses/m1,m2
  namelist /time_grid/dt,Nt
  namelist /elec_states/Nstates
- namelist /vib_states/Vstates
+ namelist /vib_states/guess_vstates
  namelist /ini_guess_wf/Ri, kappa
  namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
          & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2
@@ -227,7 +235,7 @@ implicit none
  read(input_tk,nml=elec_states)
  print*, "No. of electronic states:", Nstates
  read(input_tk,nml=vib_states)
- print*, "No. of vibrational states:", Vstates
+ print*, "No. of maximum considered vibrational states:", guess_vstates
  read(input_tk,nml=ini_guess_wf)
  print*, "Guess wavefunction:" 
  print*, "Initial position (RI):", RI
@@ -252,7 +260,7 @@ implicit none
  print*, "phi1:", phi2, "pi"
  read(input_tk,nml=input_files)
  
- write(mk_out_dir, '(a)') , adjustl(trim(output_data_dir))
+ write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
  print*, "creating output directory ", trim(mk_out_dir)
  call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
 
