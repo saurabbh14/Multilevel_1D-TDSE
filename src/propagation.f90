@@ -171,32 +171,35 @@ close(cof_1d_tk)
  
 timeloop: do K = 1, Nt
 
-    time = K * dt
-    epr = 0.d0
-    evr = 0.d0
-    psi=0.0d0
-    momt=0.0d0
-    norm_out=0.00d0
-    
-    do J = 1,Nstates
-      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
-      call dfftw_execute(planF)
-      psi = psi * kprop
-      call dfftw_execute(planB)
-      psi = psi / dble(NR)
-      psi_ges(:,J) = psi(:)      
-    end do
-     
-   do i = 1, NR
-    call pulse2(tout, mu_all(:,:,I), E(K)) 
-    psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
+   time = K * dt
+   epr = 0.d0
+   evr = 0.d0
+   psi=0.0d0
+   momt=0.0d0
+   norm_out=0.00d0
+   
+   do J = 1,Nstates
+     psi(:) = psi_ges(:,J)  ! Hilfsgroesse
+     call dfftw_execute(planF)
+     psi = psi * kprop
+     call dfftw_execute(planB)
+     psi = psi / dble(NR)
+     psi_ges(:,J) = psi(:)      
    end do
+   
+   !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout) & 
+   !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR)
+   do i = 1, NR
+     call pulse2(tout, mu_all(:,:,I), E(K)) 
+     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
+   end do
+   !$OMP END PARALLEL DO
     
 
    do j = 1, Nstates   
-!      psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
+!     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
 !              & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
-      psi_ges(:,j) = psi_ges(:,j) * exp(-im * dt * adb(:,j)) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
+     psi_ges(:,j) = psi_ges(:,j) * exp(-im * dt * adb(:,j)) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
    end do
     
    do J = 1,Nstates
@@ -216,7 +219,7 @@ timeloop: do K = 1, Nt
 
   
    do N = 1, Nstates
-    evR(N) = evR(N) + sum(abs(psi_ges(:,N))**2 * R(:))
+     evR(N) = evR(N) + sum(abs(psi_ges(:,N))**2 * R(:))
    enddo
    evR = evR * dR
    psi_loc(:,1) = 1.d0/sqrt(2.d0)*(psi_ges(:,1) + psi_ges(:,2))
@@ -226,24 +229,22 @@ timeloop: do K = 1, Nt
    call integ(psi_loc, normPn)
  
    do j = 1,Nstates
-      if (norm(j).ge.1.d-8) then
+     if (norm(j).ge.1.d-8) then
        evR(j) = evR(j)/norm(j)
        epr(j) = epr(j)/norm(j)
-      end if
+     end if
    end do
     
 ! ------------ Popolation analysis in vibrational states ----------------------
-  vib_pop = 0.d0
-  do N = 1, 1 !Nstates
-   do L=1,vstates(N)
-   psi_chi(L)=0.0d0
-   do I=1, NR
-    psi_chi(L)=psi_chi(L)+ chi0(I,L,N) * (psi_ges(I,1))
+   vib_pop = 0.d0
+   do N = 1, 1 !Nstates
+     do L=1,vstates(N)
+       psi_chi(L)=0.0d0
+       psi_chi(L)=sum(chi0(:,L,N) * (psi_ges(:,N)))
+       psi_chi(L)=psi_chi(L)*dR
+       vib_pop(L,N)=abs(psi_chi(L)**2)
+     enddo
    enddo
-    psi_chi(L)=psi_chi(L)*dR
-    vib_pop(L,N)=abs(psi_chi(L)**2)
-   enddo
-  enddo
 
    write(vibpop_1d_tk,*) sngl(time*au2fs), vib_pop(1:vstates(1),1) 
      
@@ -254,7 +255,7 @@ timeloop: do K = 1, Nt
    write(field_1d_tk,*) sngl(time *au2fs), sngl(E(K))      
 
    if(mod(K,100).eq.0) then
-    do I = 1, NR/2   
+    do I = 1, NR, 4   
       write(dens_1d_tk,*) sngl(time *au2fs), sngl(R(I)), sngl(abs(psi_ges(I,1)**2))
       write(ex_dens_1d_tk,*) sngl(time *au2fs), sngl(R(I)), sngl(abs(psi_ges(I,2:Nstates)**2))
     end do 
