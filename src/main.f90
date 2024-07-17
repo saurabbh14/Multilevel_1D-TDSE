@@ -47,8 +47,22 @@ contains
 
 end module commandline_args
 
+module var_precision
+    use iso_fortran_env, only:  int8, int16, int32, int64, real32, real64, &
+                                input_unit, output_unit, error_unit
+    implicit none
+    integer, parameter :: sp        = real32
+    integer, parameter :: dp        = real64
+    integer, parameter :: idp       = int16
+    integer, parameter :: stdin     = input_unit
+    integer, parameter :: stdout    = output_unit
+    integer, parameter :: stderr    = error_unit
+end module var_precision
+
+
 module input_vars
  use commandline_args
+ use var_precision, only: dp
 ! R-grid
  integer:: NR 
 
@@ -63,17 +77,17 @@ module input_vars
  integer:: Nt
 
 ! masses
- double precision:: m1, m2
+ real(dp):: m1, m2
 
 ! guess initial wf
- double precision:: RI, kappa
+ real(dp):: RI, kappa
 
 ! laser parameters
  character(150):: envelope_shape_laser1, envelope_shape_laser2
- double precision:: tp1, fwhm, t_mid1
- double precision:: tp2, t_mid2
- double precision:: e01, e02, phi1, phi2
- double precision:: lambda1, lambda2
+ real(dp):: tp1, fwhm, t_mid1
+ real(dp):: tp2, t_mid2
+ real(dp):: e01, e02, phi1, phi2
+ real(dp):: lambda1, lambda2
 
 ! input files
  character(2000):: input_data_dir
@@ -84,48 +98,50 @@ end module input_vars
 
 module global_vars
  use input_vars
+! R-grid
  integer, parameter:: Nx=2048 !, NR=1024
- double precision:: dR
- double precision, allocatable:: R(:), x(:)
- double precision, allocatable:: en(:)
- double precision, allocatable:: Px(:),PR(:)
- double precision, allocatable:: Pot(:,:), chi0(:,:,:)
- double precision, allocatable, dimension(:,:,:):: mu_all
- double precision, allocatable, dimension(:,:):: adb
- double precision:: kap, lam
- double precision:: dx, dt, xeq
- double precision:: dpr, dpx 
- double precision:: omega1, omega2
- double precision:: mn, mn1, mn2 !all relevent mass veriables
+ real(dp):: dR
+ real(dp), allocatable:: R(:), x(:)
+ real(dp), allocatable:: en(:)
+ real(dp), allocatable:: Px(:),PR(:)
+ real(dp), allocatable:: Pot(:,:), chi0(:,:,:)
+ real(dp), allocatable, dimension(:,:,:):: mu_all
+ real(dp), allocatable, dimension(:,:):: adb
+ real(dp):: kap, lam
+ real(dp):: dx, dt, xeq
+ real(dp):: dpr, dpx 
+ real(dp):: omega1, omega2
+ real(dp):: mn, mn1, mn2 !all relevent mass veriables
 end module
 
 module data_au
- double precision,parameter:: au2a=0.52917706d0  ! length in a.u. to Angstrom
- double precision,parameter:: cm2au=4.5554927d-6 ! energy in wavenumbers to a.u.
- double precision,parameter:: au2fs=0.024        ! time in a.u. to femtoseconds
- double precision,parameter:: j2eV = 6.242D18    ! transforms energy in J to eV
- double precision,parameter:: au2eV=27.2116d0    ! energy in a.u. to eV
- double precision,parameter:: eV2nm=1239.84      ! energy from eV to wavelength(nm)
- double precision,parameter:: kB = 3.167d-6      ! Boltzmann constant hartree/K
- double precision,parameter:: i2au=2.0997496D-9
- double precision,parameter:: e02au=5.142206707e11
- double precision,parameter:: pi=3.141592653589793d0       ! that's just pi
- double precision,parameter:: mass=1836.15d0    ! reduced mass of deuterium
- double precision,parameter:: me =1.d0          ! mass of the electron
- double precision:: m_eff, m_red                ! effecitve mass of el. and nucl.
- double precision,parameter:: c_speed =137.03604 ! speed of light in a.u.
- complex*16,parameter:: im=(0.d0,1.d0) 
+ use var_precision, only: dp
+ real(dp),parameter:: au2a=0.52917706d0  ! length in a.u. to Angstrom
+ real(dp),parameter:: cm2au=4.5554927d-6 ! energy in wavenumbers to a.u.
+ real(dp),parameter:: au2fs=0.024        ! time in a.u. to femtoseconds
+ real(dp),parameter:: j2eV = 6.242D18    ! transforms energy in J to eV
+ real(dp),parameter:: au2eV=27.2116d0    ! energy in a.u. to eV
+ real(dp),parameter:: eV2nm=1239.84      ! energy from eV to wavelength(nm)
+ real(dp),parameter:: kB = 3.167d-6      ! Boltzmann constant hartree/K
+ real(dp),parameter:: i2au=2.0997496D-9
+ real(dp),parameter:: e02au=5.142206707e11
+ real(dp),parameter:: pi=3.141592653589793d0       ! that's just pi
+ real(dp),parameter:: mass=1836.15d0    ! reduced mass of deuterium
+ real(dp),parameter:: me =1.d0          ! mass of the electron
+ real(dp):: m_eff, m_red                ! effecitve mass of el. and nucl.
+ real(dp),parameter:: c_speed =137.03604 ! speed of light in a.u.
+ complex(dp),parameter:: im=(0.d0,1.d0) 
 end module
 
 module pot_param
-use data_au
- double precision:: R0     ! Grid-Parameter, start..
- double precision,parameter:: x0 = -51.2d0*2*2!/au2a
- double precision::Rend   !..and end
- double precision,parameter:: xend = 51.2d0*2*2!/au2a
- double precision,parameter:: cpm=6.4d0*2*2!absorber position from the end of x-grid
- double precision,parameter:: cpmx=6.4d0*2*2*2!absorber position from the end of x-grid
- double precision,parameter:: cpmR=3.2d0*2 !*2 !absorber position from the end of R-grid
+ use data_au
+ real(dp):: R0     ! Grid-Parameter, start..
+ real(dp),parameter:: x0 = -51.2d0*2*2!/au2a
+ real(dp)::Rend   !..and end
+ real(dp),parameter:: xend = 51.2d0*2*2!/au2a
+ real(dp),parameter:: cpm=6.4d0*2*2!absorber position from the end of x-grid
+ real(dp),parameter:: cpmx=6.4d0*2*2*2!absorber position from the end of x-grid
+ real(dp),parameter:: cpmR=3.2d0*2 !*2 !absorber position from the end of R-grid
 
 end module pot_param
 
@@ -144,20 +160,20 @@ end module
 
 program TDSE_main
 
-use commandline_args
-use global_vars
-use data_au
+ use commandline_args
+ use global_vars
+ use data_au
  implicit none
  integer:: I, J, I_Emax
- INTEGER :: scount,  & ! Starting "time"
+ integer :: scount,  & ! Starting "time"
            ecount ! Ending "time"
  integer  rate       ! number of clock ticks per second
 
- Real*8 st, ft,timer_elapsed_time
+ real(dp) st, ft,timer_elapsed_time
  character(150):: filepath
  logical ext
- double precision Emax
- double precision, allocatable:: El(:), Al(:)
+ real(dp) Emax
+ real(dp), allocatable:: El(:), Al(:)
   
   call cpu_time(st)
   call system_clock(scount,rate)
@@ -171,6 +187,8 @@ use data_au
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
   chi0 = 0.d0
  allocate(El(Nt), Al(Nt)) 
+  
+  call blas_check
 
 print*,"test"
 !print*,"test"    
@@ -209,7 +227,7 @@ subroutine read_input
 use global_vars
 use pot_param
 implicit none
- real*4 :: dummy, dummy2, dummy3, dummy4
+ real:: dummy, dummy2, dummy3, dummy4
  character(200):: mk_out_dir
  integer:: i, j, input_tk
  namelist /grid/NR
@@ -277,8 +295,8 @@ implicit none
   Rend = R(NR)
   dR =R(2)-R(1)!(Rend - R0) / (NR - 1)
   dx = (xend - x0) / (Nx - 1)
-  dpx = (2.d0 * pi) / (dx * Nx)      
-  dpr = (2.d0 * pi) / (dR * NR) 
+  dpx = (2._dp * pi) / (dx * Nx)      
+  dpr = (2._dp * pi) / (dR * NR) 
 
 
 
@@ -297,11 +315,11 @@ implicit none
   mn=m1+m2
   m_red = m1*m2/(m1+m2)
 !  m_eff= (m1*me+m2*me+m1*m2)/(m1*m2*me)
-  m_eff = (m1+m2) / (m1+m2+1.0d0)!(4.d0 * me * mass) / (2.d0 * mass + me) 
+  m_eff = (m1+m2) / (m1+m2+1.0_dp)!(4.d0 * me * mass) / (2.d0 * mass + me) 
   mn1=m1/mn
   mn2=m2/mn
 !----------------------------  
-  kap=(mn+2.0)/(mn+1)
+  kap=(mn+2._dp)/(mn+1._dp)
   lam=(m2-m1)/mn
   RI= RI / au2a   
  
@@ -310,9 +328,9 @@ implicit none
   tp2 = tp2 / au2fs  
   t_mid1 = t_mid1 / au2fs   
   t_mid2 = t_mid2 / au2fs   
-  fwhm = (4.d0 * log(2.d0)) / tp1**2 
-  omega1=(1.d0 / (lambda1 * 1.d-7)) *cm2au
-  omega2=(1.0d0/ (lambda2 *1.d-7))* cm2au
+  fwhm = (4._dp * log(2._dp)) / tp1**2 
+  omega1=(1._dp / (lambda1 * 1.e-7_dp)) *cm2au
+  omega2=(1._dp / (lambda2 * 1.e-7_dp))* cm2au
   phi1=phi1*pi
   phi2=phi2*pi
   print*,'_________________________'
@@ -330,11 +348,11 @@ implicit none
   print*,'Wavelength 1 =', sngl(lambda1), 'nm'
   print*,'Phase 1 =', sngl(phi1)
   print*,'Field strength =', sngl(e01), 'a.u.', sngl(e01*e02au), 'V/m'
-  print*,'Intensity =', sngl(e01**2*3.509e16), 'W/cm2'
+  print*,'Intensity =', sngl(e01**2*3.509e16_dp), 'W/cm2'
   print*,'Wavelength 2 =', sngl(lambda2), 'nm'
   print*,'Phase 2 =', sngl(phi2)
   print*,'Field strength =', sngl(e02), 'a.u.', sngl(e02*e02au), 'V/m'
-  print*,'Intensity =', sngl(e02**2*3.509e16), 'W/cm2'
+  print*,'Intensity =', sngl(e02**2*3.509e16_dp), 'W/cm2'
   print*,'Wave duration =', sngl(tp1*au2fs), 'fs'
   print*
   print*, 'kap =', kap
@@ -386,12 +404,12 @@ end subroutine
 !------------------------------------------------------------------------------
 subroutine pot_read
 use global_vars, only:R, NR, adb, adb_pot, &
-        & input_data_dir, output_data_dir
+        & input_data_dir, output_data_dir, dp
 use data_au
  implicit none
  character(2000):: filepath
  integer:: I, pot_tk, pot_out_tk
- double precision:: dummy
+ real(dp):: dummy
  write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
  print*, "Potential surfaces in path:", trim(filepath)
  open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
@@ -416,16 +434,16 @@ end subroutine
 
 subroutine trans_dipole_read
 use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
-       & input_data_dir, output_data_dir
+       & input_data_dir, output_data_dir, dp
  implicit none
  integer:: I, L, M
  character(2000):: fn
  integer:: input_tk, output_tk
- double precision:: dummy
+ real(dp):: dummy
 
 
  print*, "Transition dipoles with file prefix \", trim(trans_dip_prefix), " \."
- mu_all = 0.d0
+ mu_all = 0._dp
  !transition dipole moments of all states
  if (trim(trans_dip_prefix) .eq.'') then
   do L = 1, Nstates

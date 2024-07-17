@@ -11,20 +11,20 @@ implicit none
 integer k, void, Nt2
 integer*8 planTF, planTB, planTF2, planTB2
 character(150) filename
-double precision time
-double precision E2(Nt), E21(Nt), E22(Nt), E(Nt)
+real(dp) time
+real(dp) E2(Nt), E21(Nt), E22(Nt), E(Nt)
 !double precision, allocatable:: E_dum(:), F_dum(:)
-complex*16, allocatable:: E_dum(:), F_dum(:)
-complex*16, allocatable:: E2_dum(:), F2_dum(:)
-double precision A01, A02
-double precision A2(Nt), A21(Nt), A22(Nt)
-double precision A(Nt), E2_new(Nt)
-double precision IR(Nt), Eeff(Nt), IREeff(Nt), Eeff2(Nt)
-double precision cos2, trapazoidal, gaussian ! envelope shapes
-double precision g1(Nt), g2(Nt), en_curve
-double precision time_end, time_start 
-double precision pulse_offset, rise_time
-double precision dummy
+complex(dp), allocatable:: E_dum(:), F_dum(:)
+complex(dp), allocatable:: E2_dum(:), F2_dum(:)
+real(dp) A01, A02
+real(dp) A2(Nt), A21(Nt), A22(Nt)
+real(dp) A(Nt), E2_new(Nt)
+real(dp) IR(Nt), Eeff(Nt), IREeff(Nt), Eeff2(Nt)
+real(dp) cos2, trapazoidal, gaussian ! envelope shapes
+real(dp) g1(Nt), g2(Nt), en_curve
+real(dp) time_end, time_start 
+real(dp) pulse_offset, rise_time
+real(dp) dummy
 
 ! file tokens
 integer:: elec_field_tk, vec_field_tk
@@ -80,13 +80,13 @@ rise_time = 5 !fs
 rise_time = rise_time/au2fs
 
 tp1=tp1/(1-2/pi)
-E21 =0.d0
-E22 =0.0d0
-g1=0.d0
-g2=0.d0
+E21 =0._dp
+E22 =0._dp
+g1=0._dp
+g2=0._dp
 A01=E01/omega1
 A02=E02/omega2
-E2_New=0.d0
+E2_New=0._dp
 
  envelope_shape_laser1 = trim(envelope_shape_laser1)
  envelope_shape_laser2 = trim(envelope_shape_laser2)
@@ -159,7 +159,7 @@ timeloop: do K = 1, Nt
 !    E2(K) = 0.d0
 ! endif
  !vector field
-  A(k)=(-1.0)*sum(E2(1:K))*dt
+  A(k)=(-1._dp)*sum(E2(1:K))*dt
   if (K .gt. 1) then
   E2_New(k)=-(A2(k)-A2(k-1))/dt
   endif
@@ -235,47 +235,47 @@ end subroutine
 !%%%%% pulse envelope functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function cos2(time, tp, t_mid, pulse_offset)
- use global_vars, only: Nt
+ use global_vars, only: Nt, dp
  use data_au, only: pi
  implicit none 
- double precision:: time, tp, t_mid, pulse_offset
- double precision:: cos2
+ real(dp):: time, tp, t_mid, pulse_offset
+ real(dp):: cos2
  if (time .gt. (t_mid+pulse_offset-tp/2) .and. time .lt. (t_mid+pulse_offset+tp/2)) then
    cos2 = cos((time - t_mid-pulse_offset)*pi/tp)**2      
  else
-   cos2 = 0.0d0
+   cos2 = 0._dp
  endif
 end function
 
 function trapazoidal(time, tp, t_mid, rise_time)
- use global_vars, only: Nt
+ use global_vars, only: Nt, dp
  use data_au, only: pi
- double precision:: time, tp, t_mid, rise_time
- double precision:: trapazoidal, slope, yc
+ real(dp):: time, tp, t_mid, rise_time
+ real(dp):: trapazoidal, slope, yc
  
   if (time .ge. t_mid-(tp/2 + rise_time) .and. time .le. t_mid-tp/2) then
-     slope = 1.0d0/rise_time
+     slope = 1._dp/rise_time
      yc = (t_mid -(tp/2 + rise_time)) * slope
      trapazoidal = slope * time - yc
   elseif (time .gt. t_mid-tp/2 .and. time .le. t_mid+tp/2) then
-     trapazoidal = 1.d0
+     trapazoidal = 1._dp
   elseif (time .gt. t_mid+tp/2 .and. time .le. t_mid+(tp/2+rise_time)) then 
-     slope = -1.0d0/rise_time
+     slope = -1._dp/rise_time
      yc = (t_mid +tp/2 + rise_time) * slope
      trapazoidal = slope * time - yc
   else
-     trapazoidal = 0.0d0
+     trapazoidal = 0._dp
   endif
 
 end function
 
 function gaussian(time, tp, t_mid)
- use global_vars, only: Nt 
+ use global_vars, only: Nt, dp 
  implicit none
- double precision:: time, tp, t_mid
- double precision:: gaussian, fwhm
+ real(dp):: time, tp, t_mid
+ real(dp):: gaussian, fwhm
 
-  fwhm = (4.d0 * log(2.d0)) / tp**2
+  fwhm = (4._dp * log(2._dp)) / tp**2
   gaussian = exp(-fwhm * (time - t_mid)**2)
  
 end function

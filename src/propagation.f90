@@ -1,3 +1,77 @@
+module blas_interfaces_module
+
+  use var_precision, only: wp=>dp
+
+  implicit none 
+
+  interface
+  subroutine zgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
+    import wp
+    character, intent(in):: trans
+    integer, intent(in):: m
+    integer, intent(in):: n
+    complex(wp), intent(in)::  alpha
+    complex(wp), dimension(*), intent(in):: a
+    integer, intent(in):: lda
+    complex(wp), dimension(*), intent(in):: x
+    integer, intent(in):: incx
+    complex(wp), intent(in):: beta
+    complex(wp), dimension(*), intent(out):: y
+    integer, intent(in):: incy
+  end subroutine zgemv
+  subroutine dgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
+    import wp
+    character, intent(in):: trans
+    integer, intent(in):: m
+    integer, intent(in):: n
+    real(wp), intent(in)::  alpha
+    real(wp), dimension(*), intent(in):: a
+    integer, intent(in):: lda
+    real(wp), dimension(*), intent(in):: x
+    integer, intent(in):: incx
+    real(wp), intent(in):: beta
+    real(wp), dimension(*), intent(out):: y
+    integer, intent(in):: incy
+  end subroutine dgemv
+  subroutine write_matrix(a)
+    import wp
+    real(wp), dimension(:,:) :: a
+  end subroutine write_matrix
+  end interface
+  
+end module blas_interfaces_module
+
+subroutine blas_check
+use var_precision, only: wp=>dp
+use blas_interfaces_module, only : zgemv, dgemv, write_matrix
+integer:: I, J
+ real(wp):: A(2,3), x(3), y(2)
+ 
+ A = reshape((/1._wp,0._wp,-1._wp,-3._wp,2._wp,1._wp/),(/2,3/))
+ call write_matrix(A)
+ 
+ x = (/2._wp,1._wp,0._wp/)
+ write(*,*)
+ y = matmul(A,x)
+ write(*,*) y
+ write(*,*)
+ y =0._wp
+ call dgemv('N', 2, 3, 1._wp, A, size(A,dim=1), x, 1, 0._wp, y, 1)
+ write(*,*) y
+end subroutine blas_check
+
+subroutine write_matrix(a)
+use var_precision, only: wp=>dp
+   real(wp), dimension(:,:) :: a
+   write(*,*)
+
+   do i = lbound(a,1), ubound(a,1)
+      write(*,*) (a(i,j), j = lbound(a,2), ubound(a,2))
+   end do
+end subroutine write_matrix
+
+
+
 subroutine propagation_1D(E, A)
 
 use global_vars
@@ -5,6 +79,7 @@ use pot_param
 use data_au
 use FFTW3
 use omp_lib
+use blas_interfaces_module, only : zgemv, dgemv
 
  implicit none   
 ! include "/usr/include/fftw3.f" 
@@ -13,31 +88,33 @@ use omp_lib
  integer L, M, N, void
  integer*8 planF, planB
  integer eR
- real*8 dummy, dummy2, dummy3
+ real(dp) dummy, dummy2, dummy3
  character(150):: filepath
 
- double precision dt2, time
- double precision c, sp, deR 
- double precision:: normpn(Nstates), spec(NR,Nstates)
- double precision E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates)
- double precision:: norm_diss, norm_bound
- double precision A(Nt)
- double precision evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
- double precision :: H_ac(NR,Nstates), Energy_axis(NR)
+ real(dp) dt2, time
+ real(dp) c, sp, deR 
+ real(dp):: normpn(Nstates), spec(NR,Nstates)
+ real(dp) E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates)
+ real(dp):: norm_diss, norm_bound
+ real(dp) A(Nt)
+ real(dp) evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
+ real(dp) :: H_ac(NR,Nstates), Energy_axis(NR)
 ! double precision :: Boltzmann_populations(Vstates)
- double precision :: norm_overlap(Nstates),norm_outR(Nstates), norm_outP(Nstates)
- double precision :: norm_gesP(Nstates), norm_gP_over(Nstates)
- double precision :: vib_pop(guess_vstates,Nstates) 
- double precision, allocatable, dimension(:):: cof
- complex*16:: tout(Nstates,Nstates)
- complex*16, allocatable, dimension(:,:):: psi_ges, psi_out
- complex*16, allocatable, dimension(:):: psi_diss, psi_bound
- complex*16, allocatable, dimension(:,:):: psi_loc, psi_ges1
- complex*16, allocatable, dimension(:):: psi, kprop, kprop1
- complex*16, allocatable, dimension(:,:):: psi_out1
- complex*16, allocatable, dimension(:,:):: psi_outR, psi_outR1
- complex*16, allocatable, dimension(:,:):: psi_gesP
- complex*16, allocatable, dimension(:):: psi_chi
+ real(dp) :: norm_overlap(Nstates),norm_outR(Nstates), norm_outP(Nstates)
+ real(dp) :: norm_gesP(Nstates), norm_gP_over(Nstates)
+ real(dp) :: vib_pop(guess_vstates,Nstates) 
+ real(dp), allocatable, dimension(:):: cof
+ real(dp), allocatable:: psi_Nstates_real(:), psi_Nstates_imag(:)
+ complex(dp):: tout(Nstates,Nstates)
+ complex(dp), allocatable, dimension(:,:):: psi_ges, psi_out
+ complex(dp), allocatable, dimension(:):: psi_diss, psi_bound
+ complex(dp), allocatable, dimension(:):: psi_Nstates, psi_Nstates1
+ complex(dp), allocatable, dimension(:,:):: psi_loc, psi_ges1
+ complex(dp), allocatable, dimension(:):: psi, kprop, kprop1
+ complex(dp), allocatable, dimension(:,:):: psi_out1
+ complex(dp), allocatable, dimension(:,:):: psi_outR, psi_outR1
+ complex(dp), allocatable, dimension(:,:):: psi_gesP
+ complex(dp), allocatable, dimension(:):: psi_chi
 
  integer:: chi0_tk, vstates_tk
  integer:: psi_1d_tk, cof_1d_tk
@@ -60,6 +137,8 @@ use omp_lib
           
  allocate(psi(NR),kprop(NR),psi_ges(NR,Nstates),cof(NR),kprop1(NR))
  allocate(psi_loc(nr,Nstates), psi_out(nr,Nstates))
+ allocate(psi_Nstates(Nstates), psi_Nstates1(Nstates))
+ allocate(psi_Nstates_real(Nstates), psi_Nstates_imag(Nstates))
  allocate(psi_out1(nr,Nstates), psi_outR(nr,Nstates),psi_gesP(nr,Nstates))
  allocate(psi_outR1(NR,Nstates))
  allocate(psi_chi(guess_vstates),psi_diss(NR),psi_bound(NR))
@@ -82,7 +161,7 @@ use omp_lib
   
  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
  open(newunit=vstates_tk,file=filepath,status='unknown')
- chi0 = 0.d0
+ chi0 = 0._dp
  do N = 1, 1 
   read(vstates_tk,*) II, Vstates(N)
   write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
@@ -95,7 +174,7 @@ use omp_lib
  enddo
  close(vstates_tk)
 
- psi_ges = (0.d0,0.d0)    
+ psi_ges = (0._dp,0._dp)    
  do I = 1, NR
 !   psi_ges(I,1) = (0.55d0*chi0(I,1)+0.23d0*chi0(I,2)+0.11d0*chi0(I,3) &
 !                 & + 0.07d0 * chi0(I,4) + 0.04d0*chi0(I,5)+ 2.0450413213653231E-002*chi0(I,6) &
@@ -108,8 +187,8 @@ use omp_lib
 
 !   psi_ges(I,1)=chi0(i,1)!exp(kappa*(R(I)-RI)**2)
 !   psi_ges(I,1) = sum(chi0(I,:)*sqrt(Boltzmann_populations(:)))
-   kprop(I) = exp(-im *dt * PR(I)**2/(4.d0*m_red))  ! pR**2 /2 * red_mass UND Half time step
-   kprop1(I) =exp(-im *dt * PR(I)**2/(2.d0*m_red))
+   kprop(I) = exp(-im *dt * PR(I)**2/(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
+   kprop1(I) =exp(-im *dt * PR(I)**2/(2._dp*m_red))
  end do 
  
  ! cpm = 3.d0/ au2a
@@ -167,16 +246,16 @@ close(cof_1d_tk)
  print*,'1D propagation...'
  print*
     
- psi_out=(0.d0,0.d0)
+ psi_out=(0._dp,0._dp)
  
 timeloop: do K = 1, Nt
 
    time = K * dt
-   epr = 0.d0
-   evr = 0.d0
-   psi=0.0d0
-   momt=0.0d0
-   norm_out=0.00d0
+   epr = 0._dp
+   evr = 0._dp
+   psi=0._dp
+   momt=0._dp
+   norm_out=0._dp
    
    do J = 1,Nstates
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
@@ -187,11 +266,21 @@ timeloop: do K = 1, Nt
      psi_ges(:,J) = psi(:)      
    end do
    
-   !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout) & 
+   !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout, psi_Nstates, psi_Nstates1) &
+   !$OMP FIRSTPRIVATE(psi_Nstates_real, psi_Nstates_imag) &
    !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR)
    do i = 1, NR
      call pulse2(tout, mu_all(:,:,I), E(K)) 
-     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
+!     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
+     psi_Nstates(:) = psi_ges(i,:)
+     call zgemv('N', Nstates, Nstates, (1._dp, 0._dp), tout(1:Nstates,1:Nstates), &
+             & size(tout,dim=1), psi_Nstates, 1, (0._dp,0._dp), psi_Nstates1, 1)
+     psi_ges(i,:) = psi_Nstates1(:)
+ !    call dgemv('N', Nstates, Nstates, 1._dp, tout(1:Nstates,1:Nstates), &
+ !            & size(tout,dim=1), real(psi_Nstates), 1, 0._dp, psi_Nstates_real, 1)
+ !    call dgemv('N', Nstates, Nstates, 1._dp, tout(1:Nstates,1:Nstates), &
+ !            & size(tout,dim=1), aimag(psi_Nstates), 1, 0._dp, psi_Nstates_imag, 1)
+ !    psi_ges(i,:) = cmplx(psi_Nstates_real(:),psi_Nstates_imag(:),kind=dp)
    end do
    !$OMP END PARALLEL DO
     
@@ -222,24 +311,24 @@ timeloop: do K = 1, Nt
      evR(N) = evR(N) + sum(abs(psi_ges(:,N))**2 * R(:))
    enddo
    evR = evR * dR
-   psi_loc(:,1) = 1.d0/sqrt(2.d0)*(psi_ges(:,1) + psi_ges(:,2))
-   psi_loc(:,2) = 1.d0/sqrt(2.d0)*(psi_ges(:,1) - psi_ges(:,2))
+   psi_loc(:,1) = 1._dp/sqrt(2._dp)*(psi_ges(:,1) + psi_ges(:,2))
+   psi_loc(:,2) = 1._dp/sqrt(2._dp)*(psi_ges(:,1) - psi_ges(:,2))
 
    call integ(psi_ges, norm)    
    call integ(psi_loc, normPn)
  
    do j = 1,Nstates
-     if (norm(j).ge.1.d-8) then
+     if (norm(j).ge.1.e-8_dp) then
        evR(j) = evR(j)/norm(j)
        epr(j) = epr(j)/norm(j)
      end if
    end do
     
 ! ------------ Popolation analysis in vibrational states ----------------------
-   vib_pop = 0.d0
+   vib_pop = 0._dp
    do N = 1, 1 !Nstates
      do L=1,vstates(N)
-       psi_chi(L)=0.0d0
+       psi_chi(L)=0._dp
        psi_chi(L)=sum(chi0(:,L,N) * (psi_ges(:,N)))
        psi_chi(L)=psi_chi(L)*dR
        vib_pop(L,N)=abs(psi_chi(L)**2)
@@ -308,7 +397,7 @@ timeloop: do K = 1, Nt
    do J = 1, Nstates
      psi_outR(:,J) = psi_outR(:,J) * kprop1(:)
 
-     psi_outR1(:,J) = psi_ges(:,J) * (1.0d0-cof(:))
+     psi_outR1(:,J) = psi_ges(:,J) * (1._dp-cof(:))
      psi_ges(:,J) = psi_ges(:,J) * cof(:) ! psi_ges = psi_nondiss
    enddo
 
@@ -393,9 +482,9 @@ end do timeloop
 !Final vibrastional poppulation in ground state
   do N =1, 1
     print*, "Final vibrational poppulation in the ground state"
-    psi_bound = 0.0d0
+    psi_bound = 0._dp
     do J = 1,vstates(N)
-    psi_chi(J) = 0.0d0
+    psi_chi(J) = 0._dp
     do I = 1, NR
      psi_chi(J) = psi_chi(J)+ chi0(I,J,N) * (psi_ges(I,1))
     enddo
@@ -538,12 +627,12 @@ end subroutine
 
 subroutine integ(psi, norm)
       
-use global_vars, only:NR, Nstates, dR
+use global_vars, only:NR, Nstates, dR, dp
  implicit none
  integer I, J
       
- double precision norm(Nstates)
- complex*16 psi(NR,Nstates)
+ real(dp) norm(Nstates)
+ complex(dp) psi(NR,Nstates)
       
  norm = 0.d0
  
@@ -589,18 +678,18 @@ end subroutine
 
 subroutine pulse2(tout,mu,E)
 
-use global_vars, only:dt, Nstates,kap, lam
+use global_vars, only:dt, Nstates,kap, lam, dp
 use data_au, only:im
 
 implicit none
 
  integer:: i, J
- double precision:: w, u, d, mu(Nstates,Nstates), q, E
+ real(dp):: w, u, d, mu(Nstates,Nstates), q, E
  integer Info, Lwork
 
- complex*16:: tout, b, z
- dimension u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), z(Nstates,Nstates), tout(Nstates,Nstates)
- double precision work(1000), u1(Nstates, Nstates)
+ complex(dp):: tout, b, z
+ dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), z(Nstates,Nstates), tout(Nstates,Nstates)
+ real(dp) work(1000), u1(Nstates, Nstates)
  character(len=1):: JOBZ
 
     
@@ -611,7 +700,7 @@ implicit none
 !u(2,2) = 0.d0
 
 !Diapole matrix
-u=0.0d0
+u=0._dp
 do I=1, Nstates-1
  do J=I+1, Nstates
        u(I,J)= -kap*mu(I,J) * E
@@ -626,18 +715,18 @@ Lwork=-1
 JOBZ='V'
  call dsyev(JOBZ,'U', Nstates, u,Nstates, d, work, Lwork,info )
 ! call jacobi(u,Nstates,d)
- LWORK = MIN( 1000, INT( WORK( 1 ) ) )
+ Lwork = min(1000, int(work(1)))
 !     Solve eigenproblem.
 
- CALL DSYEV( 'V', 'U', Nstates, u, Nstates, d, WORK, LWORK, INFO )
+ call dsyev('V', 'U', Nstates, u, Nstates, d, work, Lwork, info)
 
- IF( INFO.GT.0 ) THEN
-     WRITE(*,*)'The algorithm failed to compute eigenvalues.'
-     STOP
- END IF
+ if( info.GT.0 ) then
+     write(*,*)'The algorithm failed to compute eigenvalues.'
+     stop
+ endif
 !print*,"eigen vector u"
 !write( * , * ) ( (u(i,j),j=1,Nstates), i=1,Nstates )
-b= (0.d0,0.d0)
+b= (0._dp,0._dp)
  
 do J = 1,Nstates
   b(J,J) = exp(-im * dt * d(J))
@@ -659,14 +748,14 @@ end subroutine
 
 !!------------------------------------------------
 subroutine cutoff_cos(cof)
-use global_vars, only:NR, R, dR
+use global_vars, only:NR, R, dR, dp
 use data_au
 use pot_param
 
 implicit none
 
    integer :: J
-   double precision:: cof(NR)
+   real(dp):: cof(NR)
 
    do j = 1, NR
     R(J) = R0 + (j - 1) * dR
@@ -682,14 +771,14 @@ implicit none
  end subroutine
 !------------------------------------------------
  subroutine cutoff_ex(cof)
- use global_vars, only:NR, R, dR
+ use global_vars, only:NR, R, dR, dp
  use data_au
  use pot_param
 
   implicit none
 
-    integer :: J
-    double precision:: cof(NR),c
+  integer :: J
+  real(dp):: cof(NR),c
 
   c=1.800d0
  do j = 1, NR

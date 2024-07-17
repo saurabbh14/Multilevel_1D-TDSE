@@ -13,19 +13,19 @@ implicit none
   integer*8 planF, planB
   character(1000):: filename, filepath
      
-  double precision:: dt2
-  double precision:: E1, norm
-  double precision, allocatable:: E(:)
-  double precision:: CONS, thresh
-  double precision:: dummy, R_e, D_e, alpha, Rin
+  real(dp):: dt2
+  real(dp):: E1, norm
+  real(dp), allocatable:: E(:)
+  real(dp):: CONS, thresh
+  real(dp):: dummy, R_e, D_e, alpha, Rin
 !  double precision, allocatable:: chi0(:,:)
-  double precision, parameter:: temperature=3100 
+  real(dp), parameter:: temperature=3100 
 !  double precision:: total_pop, Boltzmann_populations(guess_Vstates) 
 !  double precision:: trans_dipole(guess_Vstates,guess_Vstates) 
  
-  double precision, allocatable, dimension(:):: vprop
-  double precision, allocatable, dimension(:):: psi, psi1
-  double precision, allocatable, dimension(:,:):: ref
+  real(dp), allocatable, dimension(:):: vprop
+  real(dp), allocatable, dimension(:):: psi, psi1
+  real(dp), allocatable, dimension(:,:):: ref
 
   integer trans_dipole_tk, vib_en_tk, vstates_tk
   integer chi0_vib_en_tk, chi0_tk
@@ -252,10 +252,10 @@ end
 
 subroutine eigenvalue_R(A, B, E, dt2)      
       
-use global_vars, only: NR
+use global_vars, only: NR, dp
  implicit none  
- double precision:: E, e1, e2, norm
- double precision, intent(in):: dt2, A(nr), B(nr)
+ real(dp):: E, e1, e2, norm
+ real(dp), intent(in):: dt2, A(nr), B(nr)
  
             
   call integ_r(B, B, norm)  
@@ -275,11 +275,11 @@ end subroutine
                                                           
 subroutine integ_r(A, B, C)
 
-use global_vars, only:NR, dR  
+use global_vars, only:NR, dR, dp  
  implicit none  
  integer I 
- double precision,intent(in):: A(Nr), B(Nr)
- double precision C
+ real(dp),intent(in):: A(Nr), B(Nr)
+ real(dp):: C
   
   C = 0.d0
   

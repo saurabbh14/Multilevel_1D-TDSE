@@ -3,7 +3,8 @@ lapack = dependency('lapack')
 omp = dependency('openmp')
 fftw3 = dependency('fftw3')
 fftw3_omp = declare_dependency(
-  link_args: ['-lfftw3_omp' ]
+  link_args: ['-lfftw3_omp', 
+    '-fexternal-blas']
 )
 
 executable('ml-tdse',
