@@ -19,6 +19,22 @@ module blas_interfaces_module
     complex(wp), dimension(*), intent(out):: y
     integer, intent(in):: incy
   end subroutine zgemv
+  subroutine zgemm( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
+    import wp
+    character, intent(in):: transa
+    character, intent(in):: transb
+    integer, intent(in):: m
+    integer, intent(in):: n
+    integer, intent(in):: k
+    complex(wp), intent(in) :: alpha
+    complex(wp), dimension(*), intent(in):: a
+    integer, intent(in):: lda
+    complex(wp), dimension(*), intent(in):: b
+    integer, intent(in):: ldb
+    complex(wp), intent(in):: beta
+    complex(wp), dimension(*), intent(out):: c
+    integer, intent(in):: ldc
+  end subroutine zgemm
   subroutine dgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
     import wp
     character, intent(in):: trans
@@ -33,6 +49,18 @@ module blas_interfaces_module
     real(wp), dimension(*), intent(out):: y
     integer, intent(in):: incy
   end subroutine dgemv
+  subroutine dsyev ( JOBZ, UPLO, N, A, LDA, W, WORK, LWORK, INFO) 
+    import wp
+    character:: JOBZ
+    character:: UPLO
+    integer:: N
+    real(wp), dimension(lda,*):: A
+    integer:: LDA
+    real(wp), dimension(*):: W
+    real(wp), dimension(*):: WORK
+    integer:: LWORK
+    integer:: INFO
+  end subroutine dsyev
   subroutine write_matrix(a)
     import wp
     real(wp), dimension(:,:) :: a
@@ -70,10 +98,7 @@ use var_precision, only: wp=>dp
    end do
 end subroutine write_matrix
 
-
-
 subroutine propagation_1D(E, A)
-
 use global_vars
 use pot_param
 use data_au
@@ -680,6 +705,7 @@ subroutine pulse2(tout,mu,E)
 
 use global_vars, only:dt, Nstates,kap, lam, dp
 use data_au, only:im
+use blas_interfaces_module, only : zgemv, dgemv
 
 implicit none
 
@@ -687,9 +713,10 @@ implicit none
  real(dp):: w, u, d, mu(Nstates,Nstates), q, E
  integer Info, Lwork
 
- complex(dp):: tout, b, z
- dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), z(Nstates,Nstates), tout(Nstates,Nstates)
- real(dp) work(1000), u1(Nstates, Nstates)
+ complex(dp):: tout, b, z, u1
+ dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
+         & z(Nstates,Nstates), tout(Nstates,Nstates), u1(Nstates,Nstates)
+ real(dp) work(1000) 
  character(len=1):: JOBZ
 
     
@@ -733,11 +760,16 @@ do J = 1,Nstates
 end do
 !print*, "b"
 !write( * , * ) ((b(i,j),j=1,Nstates), i=1,Nstates )
-
-z = matmul(u,b)
+u1 = (0._dp,0._dp)
+u1 = u
+!z = matmul(u,b)
+call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), u1, &
+        & size(u1,dim=1), b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
 !print*, "z"
 !write( * , * ) ((z(i,j),j=1,Nstates), i=1,Nstates )
-tout = matmul(z,transpose(u))
+!tout = matmul(z,transpose(u))
+call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), z, size(z,dim=1), &
+        & transpose(u1), size(u1,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
 !print*, "tout"
 !write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
 
@@ -762,7 +794,7 @@ implicit none
     if(R(J).lt.(Rend - cpmR)) then
     cof(j) = 1.d0
     else
-    cof(j) = dcos(((R(J) - Rend + cpmR) / -cpmR) * (0.5d0 * pi))
+    cof(j) = cos(((R(J) - Rend + cpmR) / -cpmR) * (0.5d0 * pi))
     cof(j) = cof(j)**2
     end if
    end do

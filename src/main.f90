@@ -188,7 +188,7 @@ program TDSE_main
   chi0 = 0.d0
  allocate(El(Nt), Al(Nt)) 
   
-  call blas_check
+ ! call blas_check
 
 print*,"test"
 !print*,"test"    
