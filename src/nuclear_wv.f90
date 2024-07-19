@@ -74,7 +74,7 @@ implicit none
 
  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
  open(newunit=vstates_tk,file=filepath,status='unknown')
-Nloop: do J = 1,1! Nstates ! varying the different adiabatic states
+Nloop: do J = 1, Nstates ! varying the different adiabatic states
 
 
     do i = 1, NR ! new vprop

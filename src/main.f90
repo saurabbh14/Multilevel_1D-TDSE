@@ -457,6 +457,7 @@ use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
      close(input_tk)
    enddo
   enddo
+  mu_all = abs(mu_all)
  
   do L = 1, Nstates
    do M = L+1, Nstates

@@ -504,22 +504,26 @@ end do timeloop
 !  write(filename2,fmt='(a)') 'KER_spctra_total_1D.out'
 !  open(1144,file=filename2,status='unknown')
   
-!Final vibrastional poppulation in ground state
-  do N =1, 1
-    print*, "Final vibrational poppulation in the ground state"
+!Final vibrational population in ground state
+  do N =1, Nstates
+    print*, "Final vibrational poppulation in the elec. state", int(N-1)
     psi_bound = 0._dp
     do J = 1,vstates(N)
-    psi_chi(J) = 0._dp
-    do I = 1, NR
-     psi_chi(J) = psi_chi(J)+ chi0(I,J,N) * (psi_ges(I,1))
+      psi_chi(J) = 0._dp
+      do I = 1, NR
+        psi_chi(J) = psi_chi(J)+ chi0(I,J,N) * (psi_ges(I,N))
+      enddo
+      psi_chi(J) = psi_chi(J)*dR
+      do I = 1,NR
+        psi_bound(I) = psi_bound(I)+psi_chi(J)*chi0(I,J,N)
+      enddo
+      norm_bound = sum(abs(psi_bound(:))**2)*dR
+      print*, 'Vibpop (',J,') =',norm_bound
     enddo
-     psi_chi(J) = psi_chi(J)*dR
-    do I = 1,NR
-     psi_bound(I) = psi_bound(I)+psi_chi(J)*chi0(I,J,N)
-    enddo
-    norm_bound = sum(abs(psi_bound(:))**2)*dR
-    print*, 'Vibpop (',J,') =',norm_bound
-    enddo
+    print*, 'Total population in state', int(N-1), ":", sum(abs(psi_ges(:,N))**2)*dR
+    print*, 'Bound population in state', int(N-1), ":", sum(abs(psi_bound(:))**2)*dR
+    print*, 'Unbound population in state', int(N-1), ":", &
+            & sum(abs(psi_ges(:,N)-psi_bound(:))**2)*dR
   enddo
 
 !  psi_diss(:)=psi_ges(:,1)-psi_bound(:)
