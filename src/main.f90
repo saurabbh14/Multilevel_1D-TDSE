@@ -197,7 +197,7 @@ print*,"test"
 !
 !  call adiabatic_surface(adb, mu_all) 
 do J = 1, 1
-  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
         & int(J-1), "_vibstates.out"
   inquire(file=filepath, Exist=Ext)
   print*, filepath, Ext

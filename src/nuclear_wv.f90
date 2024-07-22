@@ -228,7 +228,7 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
  enddo
  enddo
 
-  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
         & int(J-1), "_vibstates.out"
  open(newunit=chi0_tk,file=filepath,status='unknown')
   do I = 1, NR

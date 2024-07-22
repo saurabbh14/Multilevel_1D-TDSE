@@ -120,7 +120,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  real(dp) c, sp, deR 
  real(dp):: normpn(Nstates), spec(NR,Nstates)
  real(dp) E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates)
- real(dp):: norm_diss, norm_bound
+ real(dp):: norm_diss(Nstates), norm_bound(Nstates)
  real(dp) A(Nt)
  real(dp) evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
  real(dp) :: H_ac(NR,Nstates), Energy_axis(NR)
@@ -132,7 +132,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  real(dp), allocatable:: psi_Nstates_real(:), psi_Nstates_imag(:)
  complex(dp):: tout(Nstates,Nstates)
  complex(dp), allocatable, dimension(:,:):: psi_ges, psi_out
- complex(dp), allocatable, dimension(:):: psi_diss, psi_bound
+ complex(dp), allocatable, dimension(:,:):: psi_diss, psi_bound
  complex(dp), allocatable, dimension(:):: psi_Nstates, psi_Nstates1
  complex(dp), allocatable, dimension(:,:):: psi_loc, psi_ges1
  complex(dp), allocatable, dimension(:):: psi, kprop, kprop1
@@ -148,25 +148,16 @@ use blas_interfaces_module, only : zgemv, dgemv
  integer:: norm_1d_tk, norm_pn_1d_tk, field_1d_tk
  integer:: accumulation_1d_tk, momt_1d_tk
  integer:: vibpop_1d_tk
+ integer:: KER_spectra_tk, momt_spectra_tk
+ integer:: KER_spectra_un_tk, momt_spectra_un_tk
  
-!  write(filename4,fmt='(a,f4.2,a,f4.2,a,f4.2,a)') 'dens_1D_HeH+_mH',m1/mass,'_mHe',m2/mass,'_mr',mr,'.out'
-!  open(200,file=filename4,status='unknown')
-!  write(filename5,fmt='(a,f4.2,a,f4.2,a,f4.2,a)') 'ex_dens_1D_HeH+_mH',m1/mass,'_mHe',m2/mass,'_mr',mr,'.out'
-!  open(201,file=filename5,status='unknown')
-!  write(filename6,fmt='(a,f4.2,a,f4.2,a,f4.2,a)') 'R_1D_HeH+_mH',m1/mass,'_mHe',m2/mass,'_mr',mr,'.out'
-!  open(800,file=filename6,status='unknown')
-!  write(filename7,fmt='(a)') 'KER_all_spctra_HeH+_mH.out'
-!  open(2222,file=filename7,status='unknown')
-!  write(filename8,fmt='(a)') 'KER_all_ex_spctra_HeH+_mH.out'
-!  open(2223,file=filename8,status='unknown')
-          
  allocate(psi(NR),kprop(NR),psi_ges(NR,Nstates),cof(NR),kprop1(NR))
  allocate(psi_loc(nr,Nstates), psi_out(nr,Nstates))
  allocate(psi_Nstates(Nstates), psi_Nstates1(Nstates))
  allocate(psi_Nstates_real(Nstates), psi_Nstates_imag(Nstates))
  allocate(psi_out1(nr,Nstates), psi_outR(nr,Nstates),psi_gesP(nr,Nstates))
  allocate(psi_outR1(NR,Nstates))
- allocate(psi_chi(guess_vstates),psi_diss(NR),psi_bound(NR))
+ allocate(psi_chi(guess_vstates),psi_diss(NR,Nstates),psi_bound(NR,Nstates))
 
  print*
  print*,'Tuning FFTW...'
@@ -187,9 +178,9 @@ use blas_interfaces_module, only : zgemv, dgemv
  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
  open(newunit=vstates_tk,file=filepath,status='unknown')
  chi0 = 0._dp
- do N = 1, 1 
+ do N = 1, Nstates 
   read(vstates_tk,*) II, Vstates(N)
-  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Elelectronic-state-g", &
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
          & int(N-1), "_vibstates.out"
   open(newunit=chi0_tk,file=filepath,status='unknown')
   do I=1,NR
@@ -506,7 +497,9 @@ end do timeloop
   
 !Final vibrational population in ground state
   do N =1, Nstates
+    print*
     print*, "Final vibrational poppulation in the elec. state", int(N-1)
+    print*, "Number of vibrational states:", vstates(N)
     psi_bound = 0._dp
     do J = 1,vstates(N)
       psi_chi(J) = 0._dp
@@ -515,132 +508,76 @@ end do timeloop
       enddo
       psi_chi(J) = psi_chi(J)*dR
       do I = 1,NR
-        psi_bound(I) = psi_bound(I)+psi_chi(J)*chi0(I,J,N)
+        psi_bound(I,N) = psi_bound(I,N)+psi_chi(J)*chi0(I,J,N)
       enddo
-      norm_bound = sum(abs(psi_bound(:))**2)*dR
-      print*, 'Vibpop (',J,') =',norm_bound
+      norm_bound(N) = sum(abs(psi_bound(:,N))**2)*dR
+      print*, 'Vibpop (',J,') =',norm_bound(N)
     enddo
     print*, 'Total population in state', int(N-1), ":", sum(abs(psi_ges(:,N))**2)*dR
-    print*, 'Bound population in state', int(N-1), ":", sum(abs(psi_bound(:))**2)*dR
-    print*, 'Unbound population in state', int(N-1), ":", &
-            & sum(abs(psi_ges(:,N)-psi_bound(:))**2)*dR
+    print*, 'Bound population in state', int(N-1), ":", sum(abs(psi_bound(:,N))**2)*dR
+    psi_diss(:,N)=psi_ges(:,N)-psi_bound(:,N)
+    print*, 'Unbound population in state', int(N-1), ":", sum(abs(psi_diss(:,N))**2)*dR
+            !& sum(abs(psi_ges(:,N)-psi_bound(:,N))**2)*dR
+    print*, 'Calculating KER spectra in state ', int(N-1)
+    psi(:) = psi_diss(:,N)
+    call dfftw_execute(planF)
+    psi=psi/sqrt(dble(NR))
+    psi_diss(:,N)=psi(:)
+    norm_diss(N)=sum(abs(psi_diss(:,N))**2)*dR
+    print*, "Writing KER spectra in state ", int(N-1)  
+    write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "KER_spectra_from_state_g", &
+           &  int(N-1), "_unnormalized.out"
+    open(newunit=KER_spectra_un_tk,file=filepath,status='unknown')
+    write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "momt_spectra_from_state_g",&
+           &  int(N-1), "_unnormalized.out"
+    open(newunit=momt_spectra_un_tk,file=filepath,status='unknown')
+    write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "KER_spectra_from_state_g", &
+           &  int(N-1), ".out"
+    open(newunit=KER_spectra_tk,file=filepath,status='unknown')
+    write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "momt_spectra_from_state_g",&
+           &  int(N-1), ".out"
+    open(newunit=momt_spectra_tk,file=filepath,status='unknown')
+    do I=NR/2 +1,NR
+      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2
+      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2
+    enddo
+    do I=1,NR/2
+      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2
+      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2
+      write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N))**2 / pR(I)
+      write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2 / pR(I)
+    enddo
+    close(momt_spectra_un_tk)
+    close(KER_spectra_un_tk)
+    close(momt_spectra_tk)
+    close(KER_spectra_tk)
   enddo
 
-!  psi_diss(:)=psi_ges(:,1)-psi_bound(:)
-!  psi = psi_diss
-!  call dfftw_execute(planF)
-!  psi=psi/sqrt(dble(NR))
-!  psi_diss=psi
-!  norm_diss=sum(abs(psi_diss(:))**2)*dR
-!  write(*,*) "Dissociation yield 1g =",norm_diss
-!  write(*,*) lambda1,norm_diss
-!  psi_diss=psi_diss/sqrt(norm_diss)
-!   do I=NR/2 +1,NR
-!     write(1112,*) pR(I),abs(psi_diss(I))**2
-!   enddo
-!   do I=1,NR/2
-!     write(1112,*) pR(I),abs(psi_diss(I))**2
-!     write(1114,*) (pR(I)**2/(2*m_red)),abs(psi_diss(I))**2
-!   enddo
-!
-!  psi(:)=psi_ges(:,2)
-!  call dfftw_execute(planF)
-!  psi=psi/sqrt(dble(NR))
-!  psi_ges(:,2)=psi(:)
-!  norm_diss=sum(abs(psi_ges(:,2))**2)*dR
-!  write(*,*) "Dissociation yield 2u =",norm_diss
-!  write(*,*) lambda1, norm_diss
-!  psi_ges(:,2)=psi_ges(:,2)/sqrt(norm_diss)
-!   do I=NR/2 +1,NR
-!     write(1113,*) pR(I),abs(psi_ges(I,2))**2
-!   enddo
-!   do I=1,NR/2
-!     write(1113,*) pR(I),abs(psi_ges(I,2))**2
-!     write(1115,*) (pR(I)**2/(2*m_red)),abs(psi_ges(I,2))**2
-!   enddo
-!  
-!!   psi_diss(:)=psi_diss(:)+psi_ges(:,2)
-!  
-!  psi(:)=psi_diss(:)+ psi_ges(:,2)
-!  call dfftw_execute(planF)
-!  psi=psi/sqrt(dble(NR))
-!  norm_diss=sum(abs(psi(:))**2)*dR
-!  write(*,*) "Dissociation yield 1g =",norm_diss
-!  psi=psi/sqrt(norm_diss)
-!   do I=NR/2 +1,NR
-!     write(1122,*) pR(I),abs(psi(I))**2
-!   enddo
-!   do I=1,NR/2
-!     write(1122,*) pR(I),abs(psi(I))**2
-!     write(1144,*) (pR(I)**2/(2*m_red)),abs(psi(I))**2
-!   enddo
-  
-
-!   do I=NR/2 +1,NR
-!     write(2222,*) 0.1*(II-1), pR(I), (pR(I)**2)/(2*m_red),abs(psi_diss(I))**2
-!   enddo
-!   do I=1,NR/2
-!     write(2222,*) mr, pR(I), (pR(I)**2)/(2*m_red),abs(psi_diss(I))**2
-!   enddo
-!   write(2222,*)
-!   do I=NR/2 +1,NR
-!     write(2223,*) 0.1*(II-1), pR(I), (pR(I)**2)/(2*m_red),abs(psi_ges(I,2))**2
-!   enddo
-!   do I=1,NR/2
-!     write(2223,*) mr, pR(I), (pR(I)**2)/(2*m_red),abs(psi_ges(I,2))**2
-!   enddo
-!   write(2223,*)
-   
-!  call integ(psi_out, norm_out)
-!  psi_out(:,1)=psi_out(:,1)/sqrt(norm_out(1))
-!  psi_out(:,2)=psi_out(:,2)/sqrt(norm_out(2))
-!  spec=0.0d0
-!  sp=0.00d0
-!  tot_momt=0.0d0
-!  do J=1,Nstates
-!    do I=1,NR
-!      tot_momt=tot_momt+pr(I)*abs(psi_out(I,J))**2
-!    enddo
-!  enddo
-!    tot_momt=tot_momt/(sum(abs(psi_out(:,:))**2))
-!
-!
-!
-!   do I=NR/2+1,NR
-!    spec(I,1)=abs(psi_out(I,1))**2
-!    spec(I,2)=abs(psi_out(I,2))**2
-! !   write(999,*) sngl(pr(I)), sngl(spec(I,1)), sngl(spec(I,2))
-!   enddo
-!
-!   do I=1,NR/2
-!    spec(I,1)=abs(psi_out(I,1))**2
-!    spec(I,2)=abs(psi_out(I,2))**2
-!    write(999,*) sngl(pr(I)), sngl(spec(I,1)), sngl(spec(I,2))
-!   enddo
-!  print*, 'average momentum=', sngl(tot_momt), 'a.u.'
-!  print*, 'average velocity=', sngl((tot_momt*au2a)/(mass*au2fs)), 'A°/fs'
-
+  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra_unnormalized.out"
+  open(newunit=KER_spectra_un_tk,file=filepath,status='unknown')
+  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra_unnormalized.out"
+  open(newunit=momt_spectra_un_tk,file=filepath,status='unknown')
+  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra.out"
+  open(newunit=KER_spectra_tk,file=filepath,status='unknown')
+  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra.out"
+  open(newunit=momt_spectra_tk,file=filepath,status='unknown')
+  do I=NR/2 +1,NR
+    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:)))**2
+    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:))))**2
+  enddo
+  do I=1,NR/2
+    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:)))**2
+    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss)))**2
+    write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)))**2 / pR(I)
+    write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)/sqrt(norm_diss(:))))**2 / pR(I)
+  enddo
+  close(momt_spectra_un_tk)
+  close(KER_spectra_un_tk)
+  close(momt_spectra_tk)
+  close(KER_spectra_tk)
 
  
 ! ------------   
-
-
-
- 
-
- close(100, status='keep')
- close(101, status='keep') 
- close(800, status='keep')
- close(801, status='keep')
- close(906, status='keep')
- close(908, status='keep')   
- close(909, status='keep')
- close(200, status='keep')
- close(201, status='keep')
- close(999, status='keep')
-! close(998, status='keep')
-!close(1000) 
-
                                       
  call dfftw_destroy_plan(planF)
  call dfftw_destroy_plan(planB)

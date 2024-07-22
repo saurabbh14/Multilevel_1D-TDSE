@@ -7,7 +7,7 @@ fftw3_omp = declare_dependency(
     '-fexternal-blas']
 )
 
-executable('ml-tdse',
+executable('ML-TDSE-dev',
            files('main.f90',
            'nuclear_wv.f90',
            'propagation.f90',
