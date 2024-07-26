@@ -94,6 +94,13 @@ module input_vars
  character(2000):: adb_pot, trans_dip_prefix
  character(2000):: output_data_dir
 
+ ! transitions switched off
+ integer:: total_trans_off
+ character(2000):: trans_off
+
+ ! Absorber choice
+ character(5):: absorber
+
 end module input_vars
 
 module global_vars
@@ -141,7 +148,7 @@ module pot_param
  real(dp),parameter:: xend = 51.2d0*2*2!/au2a
  real(dp),parameter:: cpm=6.4d0*2*2!absorber position from the end of x-grid
  real(dp),parameter:: cpmx=6.4d0*2*2*2!absorber position from the end of x-grid
- real(dp),parameter:: cpmR=3.2d0*2 !*2 !absorber position from the end of R-grid
+ real(dp),parameter:: cpmR=3.2d0*2*2 !*2 !absorber position from the end of R-grid
 
 end module pot_param
 
@@ -239,6 +246,8 @@ implicit none
  namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
          & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2
  namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix, output_data_dir
+ namelist /trans_dip_off/total_trans_off, trans_off
+ namelist /absorber_choice/absorber
 
  open(newunit=input_tk, file=input, status='old')
  read(input_tk, nml=grid)
@@ -282,23 +291,29 @@ implicit none
  print*, "creating output directory ", trim(mk_out_dir)
  call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
 
-  allocate(R(NR), x(Nx), en(NR))
-  allocate(pR(NR), px(Nx))
-  allocate(adb(NR,Nstates),mu_all(Nstates,Nstates,NR))
+ allocate(R(NR), x(Nx), en(NR))
+ allocate(pR(NR), px(Nx))
+ allocate(adb(NR,Nstates),mu_all(Nstates,Nstates,NR))
 
-  call pot_read
-  call trans_dipole_read
+ call pot_read
+
+ read(input_tk,nml=trans_dip_off)
+ print*, "Total trans dipole switched off:", total_trans_off
+ call trans_dipole_read
+
+ read(input_tk,nml=absorber_choice)
+ print*, "Absorber function: ", absorber
+
 !  R0=0.1/au2a
 !  Rend=15.d0/au2a
 !  R =R/au2a
-  R0 =R(1)
-  Rend = R(NR)
-  dR =R(2)-R(1)!(Rend - R0) / (NR - 1)
-  dx = (xend - x0) / (Nx - 1)
-  dpx = (2._dp * pi) / (dx * Nx)      
-  dpr = (2._dp * pi) / (dR * NR) 
-
-
+ R0 =R(1)
+ Rend = R(NR)
+ dR =R(2)-R(1)!(Rend - R0) / (NR - 1)
+ dx = (xend - x0) / (Nx - 1)
+ dpx = (2._dp * pi) / (dx * Nx)      
+ dpr = (2._dp * pi) / (dR * NR) 
+  
 
  !Grids: co-ordinate space
 !  do I =1,NR
@@ -434,14 +449,25 @@ end subroutine
 
 subroutine trans_dipole_read
 use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
-       & input_data_dir, output_data_dir, dp
+       & input_data_dir, output_data_dir, dp, total_trans_off, &
+       & trans_off
  implicit none
- integer:: I, L, M
+ integer:: I, L, M, N1, N2
  character(2000):: fn
+ character(2):: trans_off_parse(total_trans_off)
+ character(2):: tr
  integer:: input_tk, output_tk
  real(dp):: dummy
+  
+ trans_off = trim(adjustl(trans_off))
+ read(trans_off,*) trans_off_parse
 
-
+ print*, "Transitions to be switched off"
+ do L =1, total_trans_off
+   trans_off_parse(L) = trim(adjustl(trans_off_parse(L)))
+   print*, "Transition", L,": ", trans_off_parse(L) 
+ enddo
+   
  print*, "Transition dipoles with file prefix \", trim(trans_dip_prefix), " \."
  mu_all = 0._dp
  !transition dipole moments of all states
@@ -457,8 +483,14 @@ use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
      close(input_tk)
    enddo
   enddo
+  do L = 1, total_trans_off
+     tr = trans_off_parse(L)
+     read(tr(1:1),*) N1
+     read(tr(2:2),*) N2 
+     mu_all(N1,N2,:) = 0._dp 
+  enddo
   mu_all = abs(mu_all)
- 
+  
   do L = 1, Nstates
    do M = L+1, Nstates
      write(fn,fmt='(a,i0,i0,a)') adjustl(trim(output_data_dir)),L,M,'_read.out'

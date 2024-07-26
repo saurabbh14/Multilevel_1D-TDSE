@@ -5,20 +5,6 @@ module blas_interfaces_module
   implicit none 
 
   interface
-  subroutine zgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
-    import wp
-    character, intent(in):: trans
-    integer, intent(in):: m
-    integer, intent(in):: n
-    complex(wp), intent(in)::  alpha
-    complex(wp), dimension(*), intent(in):: a
-    integer, intent(in):: lda
-    complex(wp), dimension(*), intent(in):: x
-    integer, intent(in):: incx
-    complex(wp), intent(in):: beta
-    complex(wp), dimension(*), intent(out):: y
-    integer, intent(in):: incy
-  end subroutine zgemv
   subroutine zgemm( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
     import wp
     character, intent(in):: transa
@@ -35,6 +21,36 @@ module blas_interfaces_module
     complex(wp), dimension(*), intent(out):: c
     integer, intent(in):: ldc
   end subroutine zgemm
+  subroutine dgemm( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
+    import wp
+    character*1, intent(in):: transa
+    character*1, intent(in):: transb
+    integer, intent(in):: m
+    integer, intent(in):: n
+    integer, intent(in):: k
+    real(wp), intent(in) :: alpha
+    real(wp), dimension(*), intent(in):: a
+    integer, intent(in):: lda
+    real(wp), dimension(*), intent(in):: b
+    integer, intent(in):: ldb
+    real(wp), intent(in):: beta
+    real(wp), dimension(*), intent(out):: c
+    integer, intent(in):: ldc
+  end subroutine dgemm
+  subroutine zgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
+    import wp
+    character*1, intent(in):: trans
+    integer, intent(in):: m
+    integer, intent(in):: n
+    complex(wp), intent(in)::  alpha
+    complex(wp), dimension(*), intent(in):: a
+    integer, intent(in):: lda
+    complex(wp), dimension(*), intent(in):: x
+    integer, intent(in):: incx
+    complex(wp), intent(in):: beta
+    complex(wp), dimension(*), intent(out):: y
+    integer, intent(in):: incy
+  end subroutine zgemv
   subroutine dgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
     import wp
     character, intent(in):: trans
@@ -54,7 +70,7 @@ module blas_interfaces_module
     character:: JOBZ
     character:: UPLO
     integer:: N
-    real(wp), dimension(lda,*):: A
+    real(wp), dimension(*):: A
     integer:: LDA
     real(wp), dimension(*):: W
     real(wp), dimension(*):: WORK
@@ -109,7 +125,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  implicit none   
 ! include "/usr/include/fftw3.f" 
  
- integer I, J, K,II
+ integer I, J, K,I_cpmR, II
  integer L, M, N, void
  integer*8 planF, planB
  integer eR
@@ -119,19 +135,22 @@ use blas_interfaces_module, only : zgemv, dgemv
  real(dp) dt2, time
  real(dp) c, sp, deR 
  real(dp):: normpn(Nstates), spec(NR,Nstates)
- real(dp) E(Nt), E1, norm(Nstates), E21, E22, norm_out(Nstates)
+ real(dp) E(Nt), E1, norm(Nstates), E21, E22
+ real(dp):: norm_outR(Nstates), norm_outR1(Nstates), norm_SE_outR1(Nstates)
  real(dp):: norm_diss(Nstates), norm_bound(Nstates)
  real(dp) A(Nt)
  real(dp) evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
  real(dp) :: H_ac(NR,Nstates), Energy_axis(NR)
 ! double precision :: Boltzmann_populations(Vstates)
- real(dp) :: norm_overlap(Nstates),norm_outR(Nstates), norm_outP(Nstates)
+ real(dp) :: norm_overlap(Nstates),norm_outP(Nstates)
  real(dp) :: norm_gesP(Nstates), norm_gP_over(Nstates)
  real(dp) :: vib_pop(guess_vstates,Nstates) 
- real(dp), allocatable, dimension(:):: cof
+ real(dp), allocatable, dimension(:):: cof, V_abs
  real(dp), allocatable:: psi_Nstates_real(:), psi_Nstates_imag(:)
  complex(dp):: tout(Nstates,Nstates)
- complex(dp), allocatable, dimension(:,:):: psi_ges, psi_out
+ real(dp), allocatable:: SE_outR1(:,:)
+ complex(dp), allocatable, dimension(:):: exp_abs, abs_func
+ complex(dp), allocatable, dimension(:,:):: psi_ges, psi_out, psi_ges_p
  complex(dp), allocatable, dimension(:,:):: psi_diss, psi_bound
  complex(dp), allocatable, dimension(:):: psi_Nstates, psi_Nstates1
  complex(dp), allocatable, dimension(:,:):: psi_loc, psi_ges1
@@ -142,20 +161,22 @@ use blas_interfaces_module, only : zgemv, dgemv
  complex(dp), allocatable, dimension(:):: psi_chi
 
  integer:: chi0_tk, vstates_tk
- integer:: psi_1d_tk, cof_1d_tk
- integer:: dens_1d_tk, ex_dens_1d_tk
+ integer:: psi_1d_tk, cof_1d_tk, complex_abs_tk
+ integer:: dens_1d_tk, ex_dens_1d_tk, Pdens_1d_tk
  integer:: avgR_1d_tk, avgpR_1d_tk
  integer:: norm_1d_tk, norm_pn_1d_tk, field_1d_tk
  integer:: accumulation_1d_tk, momt_1d_tk
  integer:: vibpop_1d_tk
+ integer:: psi_outR_norm_1d_tk, psi_outR_Pdens_1d_tk
  integer:: KER_spectra_tk, momt_spectra_tk
  integer:: KER_spectra_un_tk, momt_spectra_un_tk
  
  allocate(psi(NR),kprop(NR),psi_ges(NR,Nstates),cof(NR),kprop1(NR))
- allocate(psi_loc(nr,Nstates), psi_out(nr,Nstates))
+ allocate(exp_abs(NR), V_abs(NR), psi_ges_p(NR,Nstates),abs_func(NR))
+ allocate(psi_loc(nr,Nstates))
  allocate(psi_Nstates(Nstates), psi_Nstates1(Nstates))
  allocate(psi_Nstates_real(Nstates), psi_Nstates_imag(Nstates))
- allocate(psi_out1(nr,Nstates), psi_outR(nr,Nstates),psi_gesP(nr,Nstates))
+ allocate(psi_outR(NR,Nstates),psi_gesP(NR,Nstates))
  allocate(psi_outR1(NR,Nstates))
  allocate(psi_chi(guess_vstates),psi_diss(NR,Nstates),psi_bound(NR,Nstates))
 
@@ -201,32 +222,43 @@ use blas_interfaces_module, only : zgemv, dgemv
 !                 & +sqrt( 1.4033977605843639E-002) *chi0(I,7)+ sqrt(1.0613089628800979E-002)*chi0(I,8) &
 !                 & +sqrt( 8.8496818475779886E-003)*chi0(I,9)+ sqrt(8.0611229210941892E-003)*chi0(I,10)   !Thermal distribution over vibrational levels
 
-!   psi_ges(I,1)=chi0(i,1)!exp(kappa*(R(I)-RI)**2)
+!   psi_ges(I,1)=exp(kappa*(R(I)-RI)**2)
 !   psi_ges(I,1) = sum(chi0(I,:)*sqrt(Boltzmann_populations(:)))
-   kprop(I) = exp(-im *dt * PR(I)**2/(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
-   kprop1(I) =exp(-im *dt * PR(I)**2/(2._dp*m_red))
+   kprop(I) = exp(-im *dt * pR(I)*pR(I) /(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
+   kprop1(I) =exp(-im *dt * pR(I)*pR(I) /(2._dp*m_red))
  end do 
  
  ! cpm = 3.d0/ au2a
  ! call cutoff_cos(cpm,cof)
-  call cutoff_ex(cof)
 
+ I_cpmR = minloc(abs(R(:)-cpmR),1) - 50
+ print*, "I_cpmR =", I_cpmR, ", NR-I_cpmR", NR-I_cpmR
+ print*, "R(NR-I_cpmR) =", R(NR-I_cpmR)
+
+ select case(absorber)
+ case ("CAP")
+   call Complex_absorber_function(V_abs, exp_abs)
+   abs_func = exp_abs
+ case("mask")
+   call mask_function_ex(cof)
+   abs_func = cof
+ end select
  
  call integ(psi_ges, norm) 
- print*,'Initial norm:', sngl(norm) 
+ print*,'Initial norm:', norm 
   
  psi_ges(:,1) = psi_ges(:,1) / sqrt(norm(1))
  
  call integ(psi_ges, norm)
- print*,'norm after normalization:', sngl(norm) 
+ print*,'norm after normalization:', norm 
  
  write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi0_1d.out"
  open(newunit=psi_1d_tk,file=filepath,status='unknown') 
- write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "cof_1d.out"
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "absorber_function.out"
  open(newunit=cof_1d_tk,file=filepath,status='unknown') 
  do I = 1, NR
-  write(psi_1d_tk,*) sngl(R(I)),sngl(abs(psi_ges(I,1))**2)
-  write(cof_1d_tk,*) sngl(R(I)), sngl(cof(i))
+  write(psi_1d_tk,*) R(I), abs(psi_ges(I,1))**2
+  write(cof_1d_tk,*) R(I), abs_func(I)
  end do
 close(psi_1d_tk)
 close(cof_1d_tk)
@@ -243,6 +275,8 @@ close(cof_1d_tk)
  open(newunit=dens_1d_tk,file=filepath,status='unknown') 
  write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "ex_density_1d.out"
  open(newunit=ex_dens_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "Pdensity_1d.out"
+ open(newunit=Pdens_1d_tk,file=filepath,status='unknown') 
  write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgR_1d.out"
  open(newunit=avgR_1d_tk,file=filepath,status='unknown') 
  write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgPR_1d.out"
@@ -257,12 +291,19 @@ close(cof_1d_tk)
  open(newunit=momt_1d_tk,file=filepath,status='unknown') 
  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), 'vibpop1D_lambda.out'
  open(newunit=vibpop_1d_tk,file=filepath,status='unknown')
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_norm_1d.out"
+ open(newunit=psi_outR_norm_1d_tk,file=filepath,status='unknown') 
+ write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_Pdensity_1d.out"
+ open(newunit=psi_outR_Pdens_1d_tk,file=filepath,status='unknown') 
 
  print*
  print*,'1D propagation...'
  print*
     
- psi_out=(0._dp,0._dp)
+ psi_outR = (0._dp,0._dp)
+ norm = 0._dp
+ normPn = 0._dp
+ norm_outR = 0._dp
  
 timeloop: do K = 1, Nt
 
@@ -271,9 +312,13 @@ timeloop: do K = 1, Nt
    evr = 0._dp
    psi=0._dp
    momt=0._dp
-   norm_out=0._dp
+!   norm_out=0._dp
+   norm = 0._dp
+   normPn = 0._dp
+   norm_outR = 0._dp
    
    do J = 1,Nstates
+     psi = (0._dp, 0._dp)
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
      call dfftw_execute(planF)
      psi = psi * kprop
@@ -282,9 +327,15 @@ timeloop: do K = 1, Nt
      psi_ges(:,J) = psi(:)      
    end do
    
+   do j = 1, Nstates   
+!     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
+!              & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
+     psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
+   end do
+   
    !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout, psi_Nstates, psi_Nstates1) &
    !$OMP FIRSTPRIVATE(psi_Nstates_real, psi_Nstates_imag) &
-   !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR)
+   !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR, dt)
    do i = 1, NR
      call pulse2(tout, mu_all(:,:,I), E(K)) 
 !     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
@@ -292,11 +343,6 @@ timeloop: do K = 1, Nt
      call zgemv('N', Nstates, Nstates, (1._dp, 0._dp), tout(1:Nstates,1:Nstates), &
              & size(tout,dim=1), psi_Nstates, 1, (0._dp,0._dp), psi_Nstates1, 1)
      psi_ges(i,:) = psi_Nstates1(:)
- !    call dgemv('N', Nstates, Nstates, 1._dp, tout(1:Nstates,1:Nstates), &
- !            & size(tout,dim=1), real(psi_Nstates), 1, 0._dp, psi_Nstates_real, 1)
- !    call dgemv('N', Nstates, Nstates, 1._dp, tout(1:Nstates,1:Nstates), &
- !            & size(tout,dim=1), aimag(psi_Nstates), 1, 0._dp, psi_Nstates_imag, 1)
- !    psi_ges(i,:) = cmplx(psi_Nstates_real(:),psi_Nstates_imag(:),kind=dp)
    end do
    !$OMP END PARALLEL DO
     
@@ -304,16 +350,18 @@ timeloop: do K = 1, Nt
    do j = 1, Nstates   
 !     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
 !              & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
-     psi_ges(:,j) = psi_ges(:,j) * exp(-im * dt * adb(:,j)) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
+     psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
    end do
     
    do J = 1,Nstates
+     psi = (0._dp, 0._dp)
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
      call dfftw_execute(planF) 
      psi = psi * kprop 
      psi = psi /sqrt(dble(nr))     
      epr(j) =  sum(abs(psi(:))**2 * pr(:))
      epr(j) = epr(j) * dr
+     psi_ges_p(:,J) = psi(:)
      call dfftw_execute(planB)
      psi = psi / sqrt(dble(NR))
      psi_ges(:,J) = psi(:)      
@@ -347,89 +395,65 @@ timeloop: do K = 1, Nt
        psi_chi(L)=0._dp
        psi_chi(L)=sum(chi0(:,L,N) * (psi_ges(:,N)))
        psi_chi(L)=psi_chi(L)*dR
-       vib_pop(L,N)=abs(psi_chi(L)**2)
+       vib_pop(L,N)=abs(psi_chi(L))**2
      enddo
    enddo
 
-   write(vibpop_1d_tk,*) sngl(time*au2fs), vib_pop(1:vstates(1),1) 
-     
-   write(avgR_1d_tk,*) sngl(time *au2fs), sngl(evR)
-   write(avgpR_1d_tk,*) sngl(time *au2fs), sngl(epr)
-   write(norm_1d_tk,*) sngl(time *au2fs), norm
-   write(norm_pn_1d_tk,*) sngl(time *au2fs), sngl(normPn)
-   write(field_1d_tk,*) sngl(time *au2fs), sngl(E(K))      
-
+   write(vibpop_1d_tk,*) time*au2fs, vib_pop(1:vstates(1),1) 
+   write(avgR_1d_tk,*) time *au2fs, evR
+   write(avgpR_1d_tk,*) time *au2fs, epr
+   write(norm_1d_tk,*) time *au2fs, norm
+   write(norm_pn_1d_tk,*) time *au2fs, normPn
+   write(field_1d_tk,*) time *au2fs, E(K)      
+  
+   ! Coordinate space density 
    if(mod(K,100).eq.0) then
     do I = 1, NR, 4   
-      write(dens_1d_tk,*) sngl(time *au2fs), sngl(R(I)), sngl(abs(psi_ges(I,1)**2))
-      write(ex_dens_1d_tk,*) sngl(time *au2fs), sngl(R(I)), sngl(abs(psi_ges(I,2:Nstates)**2))
+      write(dens_1d_tk,*) time *au2fs, R(I), abs(psi_ges(I,1))**2
+      write(ex_dens_1d_tk,*) time *au2fs, R(I), abs(psi_ges(I,2:Nstates))**2
     end do 
     write(dens_1d_tk,*)
     write(ex_dens_1d_tk,*)
-  
-   end if  
- 
-
+   end if
+   
+   ! Momentum space density
+   if (mod(K,100) .eq. 0) then
+    do I = NR/2 +1, NR, 4   
+      write(Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_ges_p(I,:))**2
+    end do 
+    do I = 1, NR/2, 4   
+      write(Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_ges_p(I,:))**2
+    end do 
+    write(Pdens_1d_tk,*)
+   endif
 
  ! -------------Continuum treatment ---------------------
-!    do j=1,Nstates
-!     do i=1,nr
-!      psi(i)=psi_out(i,j)
-!     end do
-!
-!      call dfftw_execute(planB)
-!      psi=psi/sqrt(dble(nr))
-!     do i=1,NR
-!      psi_out(i,j)=psi(i)
-!     enddo
-!   enddo
-!
-!   do i=1,NR
-!    tout(1,1) = cos(-kap*mu_all(I,1,2)*E(K)*dt)
-!    tout(1,2) = -im*sin(-kap*mu_all(I,1,2)*E(K)*dt)
-!    tout(2,1) = tout(1,2)
-!    tout(2,2) = tout(1,1)
-!    ! call pulse2(tout, mu_all(i,:,:),E(K))
-!     psi_out(i,1:Nstates)=matmul(tout(1:Nstates,1:Nstates), psi_out(i,1:Nstates))
-!   enddo
-!   do j=1,Nstates
-!     do i=1,nr
-!      psi(i)=psi_out(i,j)
-!     end do
-!
-!      call dfftw_execute(planF)
-!      psi=psi/sqrt(dble(nr))
-!     do i=1,NR
-!      psi_out(i,j)=psi(i)
-!     enddo
-!   enddo
-!
-!   do j=1,Nstates
-!    do i=1,NR
-!     psi_out(i,j)=psi_out(i,j)*kprop1(I)
-!    enddo
-!   enddo
-   
+  
+   psi_outR1 = (0._dp, 0._dp)
    do J = 1, Nstates
-     psi_outR(:,J) = psi_outR(:,J) * kprop1(:)
-
-     psi_outR1(:,J) = psi_ges(:,J) * (1._dp-cof(:))
-     psi_ges(:,J) = psi_ges(:,J) * cof(:) ! psi_ges = psi_nondiss
+     psi_outR(:,J) = psi_outR(:,J) * kprop1(:) * exp(-im*dt*adb(NR-I_cpmR,J))
+     psi_outR1(:,J) = psi_ges(:,J) * (1._dp-abs_func(:))
+     psi_ges(:,J) = psi_ges(:,J) * abs_func(:) ! psi_ges = psi_nondiss
    enddo
-
-!   norm_overlap(1)=2.0d0*dot_product(psi_outR(:,1),psi_ges(:,1))*dr
-!   norm_overlap(2)=2.0d0*dot_product(psi_outR(:,2),psi_ges(:,2))*dr
-!
-!   call integ(psi_outR,norm_outR)
-!   norm1=norm1+norm_overlap(1)+norm_overlap(2)+norm_outR(1)+norm_outR(2)
-!
-   do J=1,Nstates
-     psi(:)=psi_outR1(:,j)
+   write(psi_outR_norm_1d_tk,*) time*au2fs, norm_outR(:)
+   do J = 1, Nstates
+     psi = (0._dp, 0._dp)
+     psi(:) = psi_outR1(:,J)
      call dfftw_execute(planF)
-     psi=psi/sqrt(dble(nr))
-     psi_outR1(:,J)=psi(:)
+     psi = psi/sqrt(dble(NR))
+     psi_outR1(:,J) = psi(:)
    enddo
    psi_outR = psi_outR + psi_outR1
+   ! Momentum space density
+   if (mod(K,100) .eq. 0) then
+    do I = NR/2 +1, NR, 4
+      write(psi_outR_Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_outR(I,:))**2
+    end do
+    do I = 1, NR/2, 4
+      write(psi_outR_Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_outR(I,:))**2
+    end do 
+    write(psi_outR_Pdens_1d_tk,*)
+   endif
 
 !   psi_gesP=psi_ges
 !   do j=1,Nstates
@@ -482,18 +506,6 @@ timeloop: do K = 1, Nt
 ! ------------   
 
 end do timeloop
-!  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), &
-!          & 'Momentum_spectra_1d.out'
-!  open(momt_spec_1d_tk,file=filename2,status='unknown')
-!  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), &
-!          & 'Momentum_spectra_total_1D.out'
-!  open(1122,file=filename2,status='unknown')
-!  write(filename2,fmt='(a)') 'KER_spctra_1g_1D.out'
-!  open(1114,file=filename2,status='unknown')
-!  write(filename3,fmt='(a)') 'KER_spctra_2u_1D.out'
-!  open(1115,file=filename3,status='unknown')
-!  write(filename2,fmt='(a)') 'KER_spctra_total_1D.out'
-!  open(1144,file=filename2,status='unknown')
   
 !Final vibrational population in ground state
   do N =1, Nstates
@@ -518,12 +530,15 @@ end do timeloop
     psi_diss(:,N)=psi_ges(:,N)-psi_bound(:,N)
     print*, 'Unbound population in state', int(N-1), ":", sum(abs(psi_diss(:,N))**2)*dR
             !& sum(abs(psi_ges(:,N)-psi_bound(:,N))**2)*dR
+    print*, 'Unbound population reached to the absorber in state', int(N-1), ":", &
+            sum(abs(psi_outR(:,N))**2)*dR
     print*, 'Calculating KER spectra in state ', int(N-1)
     psi(:) = psi_diss(:,N)
     call dfftw_execute(planF)
     psi=psi/sqrt(dble(NR))
     psi_diss(:,N)=psi(:)
     norm_diss(N)=sum(abs(psi_diss(:,N))**2)*dR
+    norm_outR(N) = sum(abs(psi_outR(:,N))**2)*dR
     print*, "Writing KER spectra in state ", int(N-1)  
     write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "KER_spectra_from_state_g", &
            &  int(N-1), "_unnormalized.out"
@@ -538,14 +553,18 @@ end do timeloop
            &  int(N-1), ".out"
     open(newunit=momt_spectra_tk,file=filepath,status='unknown')
     do I=NR/2 +1,NR
-      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2
-      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2
+      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2, abs(psi_outR(I,N))**2
+      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2, &
+              & abs(psi_outR(I,N)/sqrt(norm_diss(N)))**2
     enddo
     do I=1,NR/2
-      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2
-      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2
-      write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N))**2 / pR(I)
-      write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2 / pR(I)
+      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2, abs(psi_outR(I,N))**2
+      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2, &
+              & abs(psi_outR(I,N)/sqrt(norm_outR(N)))**2
+      write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N))**2 / pR(I),&
+              & m_red*abs(psi_outR(I,N))**2 / pR(I) 
+      write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2 / pR(I), &
+              & m_red*abs(psi_outR(I,N)/sqrt(norm_outR(N)))**2 / pR(I) 
     enddo
     close(momt_spectra_un_tk)
     close(KER_spectra_un_tk)
@@ -562,14 +581,18 @@ end do timeloop
   write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra.out"
   open(newunit=momt_spectra_tk,file=filepath,status='unknown')
   do I=NR/2 +1,NR
-    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:)))**2
-    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:))))**2
+    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2)
+    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
+              & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
   enddo
   do I=1,NR/2
-    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:)))**2
-    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss)))**2
-    write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)))**2 / pR(I)
-    write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)/sqrt(norm_diss(:))))**2 / pR(I)
+    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2)
+    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
+              & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
+    write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:))**2) / pR(I), &
+              & m_red*sum(abs(psi_outR(I,:))**2) / pR(I)
+    write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2) /pR(I), &
+              & m_red*sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2) / pR(I)
   enddo
   close(momt_spectra_un_tk)
   close(KER_spectra_un_tk)
@@ -582,7 +605,7 @@ end do timeloop
  call dfftw_destroy_plan(planF)
  call dfftw_destroy_plan(planB)
    
- deallocate(psi, kprop, psi_ges, cof, psi_loc, psi_out,psi_outR, psi_gesP)
+ deallocate(psi, kprop, psi_ges, cof, psi_loc, psi_outR1,psi_outR, psi_gesP)
 
 return
 end subroutine
@@ -590,7 +613,33 @@ end subroutine
 
 !_________________________________________________________
 
+subroutine complex_absorber_function(v_abs, f)
+use global_vars, only: NR, dp, dR, dt, R
+use data_au, only: im
+use pot_param, only: cpmR
+ implicit none
+ integer I
+ real(dp):: a, eps, V_abs(NR), n, R0, p
+ complex(dp):: iV_abs(NR), f(NR)
+ 
+ eps = epsilon(a) 
+ print*, "Lower limit of the precision:", eps
+ n = 4 ! power of absorber function
+ R0 = R(NR)- cpmR ! start of the absorber
+ p = 20._dp ! optimal absorption momentum
+ a = -log(eps) *(n+1) *p / (2*(R(NR)-R0)**(n+1))
+ print*, "Absorber prefactor a:", a
 
+ do I = 1, NR
+  if (R(I) .gt. abs(R0)) then
+    V_abs(I) = a*(R(I)-R0)**n
+  else
+    V_abs(I) = 0._dp
+  endif
+ enddo
+ f(:) = exp(-dt *V_abs(:))
+end subroutine
+!------------------------------------------------------------------
 subroutine integ(psi, norm)
       
 use global_vars, only:NR, Nstates, dR, dp
@@ -603,9 +652,7 @@ use global_vars, only:NR, Nstates, dR, dp
  norm = 0.d0
  
  do J = 1, Nstates
-  do I = 1, NR
-    norm(J)= norm(J) + abs(psi(I,J))**2   
-  end do
+    norm(J)= sum(abs(psi(:,J))**2)   
  end do
  
    norm = norm * dR
@@ -651,12 +698,13 @@ use blas_interfaces_module, only : zgemv, dgemv
 implicit none
 
  integer:: i, J
- real(dp):: w, u, d, mu(Nstates,Nstates), q, E
+ real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
  integer Info, Lwork
 
- complex(dp):: tout, b, z, u1
+ complex(dp):: tout, b, z, p
  dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
-         & z(Nstates,Nstates), tout(Nstates,Nstates), u1(Nstates,Nstates)
+         & z(Nstates,Nstates), tout(Nstates,Nstates), &
+         & p(Nstates,Nstates), uv(Nstates,Nstates)
  real(dp) work(1000) 
  character(len=1):: JOBZ
 
@@ -677,50 +725,52 @@ do I=1, Nstates-1
 enddo
 !print*, "u"
 !write( * , * ) ((u(i,j),j=1,Nstates), i=1,Nstates )
-
+ 
+uv = 0._dp
+uv = u
 
 Lwork=-1
 JOBZ='V'
- call dsyev(JOBZ,'U', Nstates, u,Nstates, d, work, Lwork,info )
+ call dsyev(JOBZ,'U', Nstates, uv,Nstates, d, work, Lwork,info )
 ! call jacobi(u,Nstates,d)
  Lwork = min(1000, int(work(1)))
 !     Solve eigenproblem.
+ call dsyev('V', 'U', Nstates, uv, Nstates, d, work, Lwork, info)
 
- call dsyev('V', 'U', Nstates, u, Nstates, d, work, Lwork, info)
-
- if( info.GT.0 ) then
+ if( info.gt.0 ) then
      write(*,*)'The algorithm failed to compute eigenvalues.'
      stop
  endif
-!print*,"eigen vector u"
-!write( * , * ) ( (u(i,j),j=1,Nstates), i=1,Nstates )
-b= (0._dp,0._dp)
  
-do J = 1,Nstates
-  b(J,J) = exp(-im * dt * d(J))
-end do
+ p = (0._dp,0._dp)
+ p = uv ! transfering eigenvectors to a complex array
+!print*,"eigen vector p"
+!write( * , * ) ( (p(i,j),j=1,Nstates), i=1,Nstates )
+
+ b= (0._dp,0._dp)
+ do J = 1,Nstates  
+   b(J,J) = exp(-im * dt * d(J)) ! exponentiate diagonal matrix i.e. eigenvalues
+ end do
 !print*, "b"
 !write( * , * ) ((b(i,j),j=1,Nstates), i=1,Nstates )
-u1 = (0._dp,0._dp)
-u1 = u
-!z = matmul(u,b)
-call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), u1, &
-        & size(u1,dim=1), b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
+
+! Calculating e^u = P (e^d) P^(-1)
+!z = matmul(p,b)
+ call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), p, & 
+         & size(p,dim=1), b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
 !print*, "z"
 !write( * , * ) ((z(i,j),j=1,Nstates), i=1,Nstates )
-!tout = matmul(z,transpose(u))
-call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), z, size(z,dim=1), &
-        & transpose(u1), size(u1,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
+!tout = matmul(z,transpose(p))
+ call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), z, size(z,dim=1), &
+         & transpose(p), size(p,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
 !print*, "tout"
 !write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
-
-
 
 return
 end subroutine
 
 !!------------------------------------------------
-subroutine cutoff_cos(cof)
+subroutine mask_function_cos(cof)
 use global_vars, only:NR, R, dR, dp
 use data_au
 use pot_param
@@ -743,7 +793,7 @@ implicit none
  return
  end subroutine
 !------------------------------------------------
- subroutine cutoff_ex(cof)
+ subroutine mask_function_ex(cof)
  use global_vars, only:NR, R, dR, dp
  use data_au
  use pot_param
@@ -753,7 +803,7 @@ implicit none
   integer :: J
   real(dp):: cof(NR),c
 
-  c=1.800d0
+  c=1.00d0
  do j = 1, NR
    R(J) = R0 + (j - 1) * dR
    cof(j)=1.0d0/(1.0d0+exp(c*(R(J)-Rend+cpmR)))
