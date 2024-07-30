@@ -33,4 +33,6 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   disableHardening = "all";
+
+  meta.mainProgram = "ML-TDSE";
 })
