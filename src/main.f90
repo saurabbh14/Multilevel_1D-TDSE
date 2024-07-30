@@ -188,6 +188,7 @@ program TDSE_main
   !call parse_command_line
   print*, "reading input:"
   print*, "General Inputs from ", trim(input)
+  call execute_command_line("pwd")
  
   call read_input
   call p_grid
