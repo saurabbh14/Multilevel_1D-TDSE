@@ -12,10 +12,14 @@
       pkgs = import nixpkgs {
         inherit system;
         overlays = [ (import ./nix/overlay.nix) ];
+        config.allowUnsupportedSystem = true;
       };
     in
     {
-      packages.default = pkgs.ml-tdse;
+      packages = {
+        default = pkgs.ml-tdse;
+        static = pkgs.pkgsStatic.ml-tdse;
+      };
 
       devShell = with pkgs; mkShell {
         buildInputs = [ fortran-language-server ] ++
