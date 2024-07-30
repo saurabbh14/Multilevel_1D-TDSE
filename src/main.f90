@@ -3,47 +3,43 @@ character(2000):: command_line
 character(2000):: input
 
 !call read_command_line
-
 !call parse_command_line
-
-
 contains
 
-     subroutine read_command_line
-       integer :: exenamelength
-       integer :: io, io2
+ subroutine read_command_line
+ integer :: exenamelength
+ integer :: io, io2
 
-       command_line = ""
-!       call get_command(command = command_line,status = io)
-       call get_command_argument(1,command_line,status = io)
-       if (io==0) then
-          input = trim(command_line)
+ command_line = ""
+! call get_command(command = command_line,status = io)
+ call get_command_argument(1,command_line,status = io)
+ if (io==0) then
+   input = trim(command_line)
 ! Uncomment if parsing of commandline is needed, i.e. multiple argments in the commandline         
-!         call get_command_argument(0,length = exenamelength,status = io2)
-!         if (io2==0) then
-!           command_line = "&cmd "//adjustl(trim(command_line(exenamelength+1:)))//" /"
-!         else
-!           command_line = "&cmd "//adjustl(trim(command_line))//" /"
-!         end if
-       else
-         write(*,*) io,"Error getting command line."
-       end if
-     end subroutine
+!  call get_command_argument(0,length = exenamelength,status = io2)
+!  if (io2==0) then
+!    command_line = "&cmd "//adjustl(trim(command_line(exenamelength+1:)))//" /"
+!  else
+!    command_line = "&cmd "//adjustl(trim(command_line))//" /"
+!  end if
+   else
+     write(*,*) io,"Error getting command line."
+   end if
+  end subroutine
 
-!     subroutine parse_command_line
-!       character(256) :: msg
-!       namelist /cmd/ input, adb_pot, trans_dip
-!       integer :: io
+! subroutine parse_command_line
+!   character(256) :: msg
+!   namelist /cmd/ input, adb_pot, trans_dip
+!   integer :: io
 !
-!       if (len_trim(command_line)>0) then
-!         msg = ''
-!         read(command_line,nml = cmd,iostat = io,iomsg = msg)
-!         if (io/=0) then
-!           error stop "Error parsing the command line or cmd.conf " // msg
-!         end if
-!       end if
-!     end subroutine
-
+!   if (len_trim(command_line)>0) then
+!     msg = ''
+!     read(command_line,nml = cmd,iostat = io,iomsg = msg)
+!     if (io/=0) then
+!       error stop "Error parsing the command line or cmd.conf " // msg
+!     end if
+!   end if
+! end subroutine
 
 end module commandline_args
 
@@ -58,7 +54,6 @@ module var_precision
     integer, parameter :: stdout    = output_unit
     integer, parameter :: stderr    = error_unit
 end module var_precision
-
 
 module input_vars
  use commandline_args
@@ -94,18 +89,17 @@ module input_vars
  character(2000):: adb_pot, trans_dip_prefix
  character(2000):: output_data_dir
 
- ! transitions switched off
+! transitions switched off
  integer:: total_trans_off
  character(2000):: trans_off
 
- ! Absorber choice
+! Absorber choice
  character(5):: absorber
 
 end module input_vars
 
 module global_vars
  use input_vars
-! R-grid
  integer, parameter:: Nx=2048 !, NR=1024
  real(dp):: dR
  real(dp), allocatable:: R(:), x(:)
@@ -149,13 +143,11 @@ module pot_param
  real(dp),parameter:: cpm=6.4d0*2*2!absorber position from the end of x-grid
  real(dp),parameter:: cpmx=6.4d0*2*2*2!absorber position from the end of x-grid
  real(dp),parameter:: cpmR=3.2d0*2*2 !*2 !absorber position from the end of R-grid
-
 end module pot_param
 
 module FFTW3
   use, intrinsic :: iso_c_binding
   include "fftw3.f03"
-!
 !  include '/usr/include/fftw3.f03'                                        ! Desktop packet
 !  include '/home/me23jok/ProjectX/FFTW3/include/fftw3.f03' ! ARA cluster
 !  include '/usr/local/include/fftw3.f03'
@@ -188,7 +180,7 @@ program TDSE_main
   !call parse_command_line
   print*, "reading input:"
   print*, "General Inputs from ", trim(input)
-  call execute_command_line("pwd")
+!  call execute_command_line("pwd")
  
   call read_input
   call p_grid
