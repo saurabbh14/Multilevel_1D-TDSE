@@ -188,7 +188,8 @@ use blas_interfaces_module, only : zgemv, dgemv
     print*, 'Error in fftw_init_threads, quitting'
  endif
  
- call fftw_plan_with_nthreads(omp_get_max_threads())    
+ call fftw_plan_with_nthreads(1)    
+! call fftw_plan_with_nthreads(omp_get_max_threads())    
  call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
  call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
   
