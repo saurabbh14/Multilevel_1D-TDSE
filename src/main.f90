@@ -49,7 +49,8 @@ module var_precision
     implicit none
     integer, parameter :: sp        = real32
     integer, parameter :: dp        = real64
-    integer, parameter :: idp       = int16
+    integer, parameter :: idp        = int64
+    integer, parameter :: isp       = int32
     integer, parameter :: stdin     = input_unit
     integer, parameter :: stdout    = output_unit
     integer, parameter :: stderr    = error_unit
@@ -57,7 +58,7 @@ end module var_precision
 
 module input_vars
  use commandline_args
- use var_precision, only: dp
+ use var_precision, only: dp, idp
 ! R-grid
  integer:: NR 
 

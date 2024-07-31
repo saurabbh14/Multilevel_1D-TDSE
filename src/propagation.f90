@@ -1,81 +1,81 @@
 module blas_interfaces_module
 
-  use var_precision, only: wp=>dp
+  use var_precision, only: wp=>dp, idp
 
   implicit none 
 
   interface
   subroutine zgemm( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
-    import wp
+    import wp, idp
     character, intent(in):: transa
     character, intent(in):: transb
-    integer, intent(in):: m
-    integer, intent(in):: n
-    integer, intent(in):: k
+    integer(idp), intent(in):: m
+    integer(idp), intent(in):: n
+    integer(idp), intent(in):: k
     complex(wp), intent(in) :: alpha
     complex(wp), dimension(*), intent(in):: a
-    integer, intent(in):: lda
+    integer(idp), intent(in):: lda
     complex(wp), dimension(*), intent(in):: b
-    integer, intent(in):: ldb
+    integer(idp), intent(in):: ldb
     complex(wp), intent(in):: beta
     complex(wp), dimension(*), intent(out):: c
-    integer, intent(in):: ldc
+    integer(idp), intent(in):: ldc
   end subroutine zgemm
   subroutine dgemm( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
-    import wp
+    import wp, idp
     character*1, intent(in):: transa
     character*1, intent(in):: transb
-    integer, intent(in):: m
-    integer, intent(in):: n
-    integer, intent(in):: k
+    integer(idp), intent(in):: m
+    integer(idp), intent(in):: n
+    integer(idp), intent(in):: k
     real(wp), intent(in) :: alpha
     real(wp), dimension(*), intent(in):: a
-    integer, intent(in):: lda
+    integer(idp), intent(in):: lda
     real(wp), dimension(*), intent(in):: b
-    integer, intent(in):: ldb
+    integer(idp), intent(in):: ldb
     real(wp), intent(in):: beta
     real(wp), dimension(*), intent(out):: c
-    integer, intent(in):: ldc
+    integer(idp), intent(in):: ldc
   end subroutine dgemm
   subroutine zgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
-    import wp
+    import wp, idp
     character*1, intent(in):: trans
-    integer, intent(in):: m
-    integer, intent(in):: n
+    integer(idp), intent(in):: m
+    integer(idp), intent(in):: n
     complex(wp), intent(in)::  alpha
     complex(wp), dimension(*), intent(in):: a
-    integer, intent(in):: lda
+    integer(idp), intent(in):: lda
     complex(wp), dimension(*), intent(in):: x
-    integer, intent(in):: incx
+    integer(idp), intent(in):: incx
     complex(wp), intent(in):: beta
     complex(wp), dimension(*), intent(out):: y
-    integer, intent(in):: incy
+    integer(idp), intent(in):: incy
   end subroutine zgemv
   subroutine dgemv (trans, m, n, alpha,a,lda,x,incx,beta,y,incy)
-    import wp
-    character, intent(in):: trans
-    integer, intent(in):: m
-    integer, intent(in):: n
+    import wp, idp
+    character*1, intent(in):: trans
+    integer(idp), intent(in):: m
+    integer(idp), intent(in):: n
     real(wp), intent(in)::  alpha
     real(wp), dimension(*), intent(in):: a
-    integer, intent(in):: lda
+    integer(idp), intent(in):: lda
     real(wp), dimension(*), intent(in):: x
-    integer, intent(in):: incx
+    integer(idp), intent(in):: incx
     real(wp), intent(in):: beta
     real(wp), dimension(*), intent(out):: y
-    integer, intent(in):: incy
+    integer(idp), intent(in):: incy
   end subroutine dgemv
   subroutine dsyev ( JOBZ, UPLO, N, A, LDA, W, WORK, LWORK, INFO) 
-    import wp
-    character:: JOBZ
-    character:: UPLO
-    integer:: N
+    import wp, idp
+    character*1:: JOBZ
+    character*1:: UPLO
+    integer(idp):: N
     real(wp), dimension(*):: A
-    integer:: LDA
+    integer(idp):: LDA
     real(wp), dimension(*):: W
     real(wp), dimension(*):: WORK
-    integer:: LWORK
-    integer:: INFO
+    integer(idp):: LWORK
+    integer(idp):: INFO
   end subroutine dsyev
   subroutine write_matrix(a)
     import wp
@@ -86,7 +86,7 @@ module blas_interfaces_module
 end module blas_interfaces_module
 
 subroutine blas_check
-use var_precision, only: wp=>dp
+use var_precision, only: wp=>dp, idp
 use blas_interfaces_module, only : zgemv, dgemv, write_matrix
 integer:: I, J
  real(wp):: A(2,3), x(3), y(2)
@@ -100,7 +100,7 @@ integer:: I, J
  write(*,*) y
  write(*,*)
  y =0._wp
- call dgemv('N', 2, 3, 1._wp, A, size(A,dim=1), x, 1, 0._wp, y, 1)
+ call dgemv('N', 2_idp, 3_idp, 1._wp, A, size(A,dim=1,kind=idp), x, 1_idp, 0._wp, y, 1_idp)
  write(*,*) y
 end subroutine blas_check
 
@@ -127,7 +127,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  
  integer I, J, K,I_cpmR, II
  integer L, M, N, void
- integer*8 planF, planB
+ integer(idp) planF, planB
  integer eR
  real(dp) dummy, dummy2, dummy3
  character(150):: filepath
@@ -188,8 +188,8 @@ use blas_interfaces_module, only : zgemv, dgemv
     print*, 'Error in fftw_init_threads, quitting'
  endif
  
- call fftw_plan_with_nthreads(1)    
-! call fftw_plan_with_nthreads(omp_get_max_threads())    
+! call fftw_plan_with_nthreads(1)    
+ call fftw_plan_with_nthreads(omp_get_max_threads())    
  call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
  call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
   
@@ -341,8 +341,9 @@ timeloop: do K = 1, Nt
      call pulse2(tout, mu_all(:,:,I), E(K)) 
 !     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
      psi_Nstates(:) = psi_ges(i,:)
-     call zgemv('N', Nstates, Nstates, (1._dp, 0._dp), tout(1:Nstates,1:Nstates), &
-             & size(tout,dim=1), psi_Nstates, 1, (0._dp,0._dp), psi_Nstates1, 1)
+     call zgemv('N', int(Nstates,kind=idp), int(Nstates, kind=idp), (1._dp, 0._dp),  &
+             & tout, size(tout,dim=1,kind=idp), psi_Nstates, 1_idp, (0._dp,0._dp), &
+             & psi_Nstates1, 1_idp)
      psi_ges(i,:) = psi_Nstates1(:)
    end do
    !$OMP END PARALLEL DO
@@ -692,7 +693,7 @@ end subroutine
 
 subroutine pulse2(tout,mu,E)
 
-use global_vars, only:dt, Nstates,kap, lam, dp
+use global_vars, only:dt, Nstates,kap, lam, dp, idp
 use data_au, only:im
 use blas_interfaces_module, only : zgemv, dgemv
 
@@ -700,12 +701,13 @@ implicit none
 
  integer:: i, J
  real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
- integer Info, Lwork
+ integer(idp) Info, Lwork
 
- complex(dp):: tout, b, z, p
+ complex(dp):: tout, b, z, p, pT
  dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
          & z(Nstates,Nstates), tout(Nstates,Nstates), &
-         & p(Nstates,Nstates), uv(Nstates,Nstates)
+         & p(Nstates,Nstates), uv(Nstates,Nstates), &
+         & pT(Nstates,Nstates)
  real(dp) work(1000) 
  character(len=1):: JOBZ
 
@@ -730,13 +732,15 @@ enddo
 uv = 0._dp
 uv = u
 
-Lwork=-1
+Lwork=-1_idp
 JOBZ='V'
- call dsyev(JOBZ,'U', Nstates, uv,Nstates, d, work, Lwork,info )
+ call dsyev(JOBZ,'U', int(Nstates,kind=idp), uv, int(Nstates,kind=idp), &
+        & d, work, Lwork,info)
 ! call jacobi(u,Nstates,d)
- Lwork = min(1000, int(work(1)))
+ Lwork = min(1000_idp, int(work(1)))
 !     Solve eigenproblem.
- call dsyev('V', 'U', Nstates, uv, Nstates, d, work, Lwork, info)
+ call dsyev('V', 'U', int(Nstates,kind=idp), uv, int(Nstates,kind=idp), &
+        & d, work, Lwork, info)
 
  if( info.gt.0 ) then
      write(*,*)'The algorithm failed to compute eigenvalues.'
@@ -757,13 +761,16 @@ JOBZ='V'
 
 ! Calculating e^u = P (e^d) P^(-1)
 !z = matmul(p,b)
- call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), p, & 
-         & size(p,dim=1), b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
+ call zgemm('N', 'N', int(Nstates,kind=idp), int(Nstates,kind=idp), &
+         & int(Nstates,kind=idp),(1._dp,0._dp), p, size(p,dim=1,kind=idp), &
+         & b, size(b,dim=1,kind=idp), (0._dp,0._dp), z, size(z,dim=1,kind=idp))
 !print*, "z"
 !write( * , * ) ((z(i,j),j=1,Nstates), i=1,Nstates )
+pT = transpose(p)
 !tout = matmul(z,transpose(p))
- call zgemm('N', 'N', Nstates, Nstates, Nstates,(1._dp,0._dp), z, size(z,dim=1), &
-         & transpose(p), size(p,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
+ call zgemm('N', 'N', int(Nstates,kind=idp), int(Nstates,kind=idp), &
+         & int(Nstates,kind=idp),(1._dp,0._dp), z, size(z,dim=1,kind=idp), &
+         & pT, size(pT,dim=1,kind=idp), (0._dp,0._dp), tout, size(tout,dim=1,kind=idp))
 !print*, "tout"
 !write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
 
