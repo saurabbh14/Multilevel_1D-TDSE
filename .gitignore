@@ -4,3 +4,4 @@ result*
 output
 test_f90
 src/propapgation_old.f90
+.direnv/

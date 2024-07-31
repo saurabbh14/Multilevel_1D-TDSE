@@ -1,11 +1,10 @@
 { stdenv
 , lib
-, bash
 , gfortran
 , meson
 , ninja
 , pkg-config
-, openblas
+, openblasCompat
 , fftw
 }:
 
@@ -19,7 +18,6 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   nativeBuildInputs = [
-    bash
     gfortran
     meson
     ninja
@@ -27,7 +25,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    openblas
+    openblasCompat
     (lib.getLib fftw)
     (lib.getDev fftw)
   ];
