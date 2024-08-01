@@ -7,8 +7,8 @@ module blas_interfaces_module
   interface
   subroutine zgemm( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
     import wp, idp
-    character, intent(in):: transa
-    character, intent(in):: transb
+    character*1, intent(in):: transa
+    character*1, intent(in):: transb
     integer(idp), intent(in):: m
     integer(idp), intent(in):: n
     integer(idp), intent(in):: k
@@ -190,8 +190,8 @@ use blas_interfaces_module, only : zgemv, dgemv
  
 ! call fftw_plan_with_nthreads(1)    
  call fftw_plan_with_nthreads(omp_get_max_threads())    
- call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
- call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
+ call dfftw_plan_dft_1d(planF, int(NR,kind=idp), psi, psi, FFTW_FORWARD,FFTW_MEASURE)
+ call dfftw_plan_dft_1d(planB, int(NR,kind=idp), psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
   
              
  print*,'Done.'
@@ -321,9 +321,9 @@ timeloop: do K = 1, Nt
    do J = 1,Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
-     call dfftw_execute(planF)
+     call dfftw_execute_dft(planF, psi, psi)
      psi = psi * kprop
-     call dfftw_execute(planB)
+     call dfftw_execute_dft(planB, psi, psi)
      psi = psi / dble(NR)
      psi_ges(:,J) = psi(:)      
    end do
@@ -334,9 +334,9 @@ timeloop: do K = 1, Nt
      psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
    end do
    
-   !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout, psi_Nstates, psi_Nstates1) &
-   !$OMP FIRSTPRIVATE(psi_Nstates_real, psi_Nstates_imag) &
-   !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR, dt)
+!   !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout, psi_Nstates, psi_Nstates1) &
+!   !$OMP FIRSTPRIVATE(psi_Nstates_real, psi_Nstates_imag) &
+ !  !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR, dt)
    do i = 1, NR
      call pulse2(tout, mu_all(:,:,I), E(K)) 
 !     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
@@ -346,7 +346,7 @@ timeloop: do K = 1, Nt
              & psi_Nstates1, 1_idp)
      psi_ges(i,:) = psi_Nstates1(:)
    end do
-   !$OMP END PARALLEL DO
+!   !$OMP END PARALLEL DO
     
 
    do j = 1, Nstates   
@@ -358,13 +358,13 @@ timeloop: do K = 1, Nt
    do J = 1,Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
-     call dfftw_execute(planF) 
+     call dfftw_execute_dft(planF, psi, psi) 
      psi = psi * kprop 
      psi = psi /sqrt(dble(nr))     
      epr(j) =  sum(abs(psi(:))**2 * pr(:))
      epr(j) = epr(j) * dr
      psi_ges_p(:,J) = psi(:)
-     call dfftw_execute(planB)
+     call dfftw_execute_dft(planB, psi, psi)
      psi = psi / sqrt(dble(NR))
      psi_ges(:,J) = psi(:)      
    end do     
@@ -441,7 +441,7 @@ timeloop: do K = 1, Nt
    do J = 1, Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_outR1(:,J)
-     call dfftw_execute(planF)
+     call dfftw_execute_dft(planF, psi, psi)
      psi = psi/sqrt(dble(NR))
      psi_outR1(:,J) = psi(:)
    enddo
@@ -536,7 +536,7 @@ end do timeloop
             sum(abs(psi_outR(:,N))**2)*dR
     print*, 'Calculating KER spectra in state ', int(N-1)
     psi(:) = psi_diss(:,N)
-    call dfftw_execute(planF)
+    call dfftw_execute_dft(planF, psi, psi)
     psi=psi/sqrt(dble(NR))
     psi_diss(:,N)=psi(:)
     norm_diss(N)=sum(abs(psi_diss(:,N))**2)*dR

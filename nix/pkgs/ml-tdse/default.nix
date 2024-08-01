@@ -1,6 +1,5 @@
 { stdenv
 , lib
-, bash
 , gfortran
 , meson
 , ninja
@@ -19,7 +18,6 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   nativeBuildInputs = [
-    bash
     gfortran
     meson
     ninja
