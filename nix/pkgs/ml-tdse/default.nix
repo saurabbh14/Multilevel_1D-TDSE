@@ -4,7 +4,7 @@
 , meson
 , ninja
 , pkg-config
-, openblas
+, openblasCompat
 , fftw
 }:
 
@@ -25,7 +25,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    openblas
+    openblasCompat
     (lib.getLib fftw)
     (lib.getDev fftw)
   ];
