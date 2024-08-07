@@ -23,7 +23,7 @@ real(dp) IR(Nt), Eeff(Nt), IREeff(Nt), Eeff2(Nt)
 real(dp) cos2, trapazoidal, gaussian ! envelope shapes
 real(dp) g1(Nt), g2(Nt), en_curve
 real(dp) time_end, time_start 
-real(dp) pulse_offset, rise_time
+real(dp) pulse_offset
 real(dp) dummy
 
 ! file tokens
@@ -76,8 +76,7 @@ call dfftw_plan_dft_1d(planTB2, Nt, F2_dum, E2_dum, FFTW_BACKWARD, FFTW_ESTIMATE
 time_end = Nt*dt
 time_start = (t_mid2- tp2/2)
 pulse_offset = 0 !5*pi/omega2
-rise_time = 5 !fs
-rise_time = rise_time/au2fs
+!rise_time = rise_time/au2fs
 
 tp1=tp1/(1-2/pi)
 E21 =0._dp
@@ -104,7 +103,7 @@ E2_New=0._dp
   case("trapazoidal")
     do K = 1, Nt
       time = K*dt
-      g1(K) = trapazoidal(time, tp1, t_mid1, rise_time)
+      g1(K) = trapazoidal(time, tp1, t_mid1, rise_time1)
     enddo
   case default
    print*, "Laser1: Default pulse shape is CW."
@@ -124,7 +123,7 @@ E2_New=0._dp
   case("trapazoidal")
     do K = 1, Nt
       time = K*dt
-      g2(K) = trapazoidal(time, tp2, t_mid2, rise_time)
+      g2(K) = trapazoidal(time, tp2, t_mid2, rise_time2)
     enddo
   case default
    print*, "Laser1: Default pulse shape is CW."
@@ -139,8 +138,8 @@ timeloop: do K = 1, Nt
   write(field1_tk,*) time*au2fs, E21(K), A21(K)
   write(envelope1_tk,*) time*au2fs, g1(K)
 
-  E22(K) = E02*g2(K)* sin(omega2 * (time-t_mid2-tp2/2-rise_time)+phi2)
-  A22(K) = A02*g2(K)* sin(omega2 * (time-t_mid2-tp2/2-rise_time)+phi2)
+  E22(K) = E02*g2(K)* sin(omega2 * (time-t_mid2-pulse_offset)+phi2)
+  A22(K) = A02*g2(K)* sin(omega2 * (time-t_mid2-pulse_offset)+phi2)
   write(field2_tk,*) time*au2fs, E22(K), A22(K)
   write(envelope2_tk,*) time*au2fs, g2(K)
 

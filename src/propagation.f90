@@ -189,6 +189,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  endif
  
 ! call fftw_plan_with_nthreads(1)    
+! call fftw_plan_with_nthreads(omp_get_num_threads())    
  call fftw_plan_with_nthreads(omp_get_max_threads())    
  call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
  call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
@@ -524,8 +525,8 @@ end do timeloop
       do I = 1,NR
         psi_bound(I,N) = psi_bound(I,N)+psi_chi(J)*chi0(I,J,N)
       enddo
+      print*, 'Vibpop (',J-1,') =', abs(psi_chi(J))**2
       norm_bound(N) = sum(abs(psi_bound(:,N))**2)*dR
-      print*, 'Vibpop (',J,') =',norm_bound(N)
     enddo
     print*, 'Total population in state', int(N-1), ":", sum(abs(psi_ges(:,N))**2)*dR
     print*, 'Bound population in state', int(N-1), ":", sum(abs(psi_bound(:,N))**2)*dR

@@ -136,17 +136,17 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
       psi = psi / sqrt(norm)
 
       if(abs(E(V) - E1).le.thresh) then
-        print*, 'Surface', J, 'Vibrational state', V, E(V) * au2eV, 'eV'
+        print*, 'Surface', J-1, 'Vibrational state', V-1, E(V) * au2eV, 'eV'
         print*, 'Resonance freq for dissociation', eV2nm/((adb(NR,J)-E(V))*au2eV), 'nm'
         if (V.gt.1) then
           do G=1,(V-1)
-            print*, "freq for the transition from", G, "to", V, ":", &
+            print*, "freq for the transition from", G-1, "to", V-1, ":", &
                     & eV2nm/(abs(E(G)-E(V))*au2eV), "nm E=", abs(E(G)-E(V))*au2eV, "eV"
           enddo
         endif
         print*,""
         
-      write(vib_en_tk,*) v, e(V)*au2ev
+      write(vib_en_tk,*) v-1, e(V)*au2ev
       
         do I = 1, NR
          ref(I,V) = psi(I)             ! storing as reference for the next loop

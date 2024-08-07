@@ -80,8 +80,8 @@ module input_vars
 
 ! laser parameters
  character(150):: envelope_shape_laser1, envelope_shape_laser2
- real(dp):: tp1, fwhm, t_mid1
- real(dp):: tp2, t_mid2
+ real(dp):: tp1, fwhm, t_mid1, rise_time1
+ real(dp):: tp2, t_mid2, rise_time2
  real(dp):: e01, e02, phi1, phi2
  real(dp):: lambda1, lambda2
 
@@ -201,7 +201,7 @@ do J = 1, 1
   write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
         & int(J-1), "_vibstates.out"
   inquire(file=filepath, Exist=Ext)
-  print*, filepath, Ext
+  print*, trim(filepath), " ", Ext
   if (.not. Ext) call nuclear_wavefkt
 enddo
 
@@ -238,7 +238,8 @@ implicit none
  namelist /vib_states/guess_vstates
  namelist /ini_guess_wf/Ri, kappa
  namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
-         & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2
+         & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2, &
+         & rise_time1, rise_time2
  namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix, output_data_dir
  namelist /trans_dip_off/total_trans_off, trans_off
  namelist /absorber_choice/absorber
@@ -271,6 +272,7 @@ implicit none
  print*, "Pulse width (tp):", tp1, "fs"
  print*, "Pulse midpoint:", t_mid1, "fs"
  print*, "phi1:", phi1, "pi"
+ print*, "Rise time:", rise_time1, "fs"
  print*, "Laser #2:"
  print*, "Envelope shape:", trim(envelope_shape_laser2)
  print*, "Lambda:", lambda2, "nm"
@@ -279,6 +281,7 @@ implicit none
  print*, "Pulse width (tp):", tp2, "fs"
  print*, "Pulse midpoint:", t_mid2, "fs"
  print*, "phi1:", phi2, "pi"
+ print*, "Rise time:", rise_time2, "fs"
  read(input_tk,nml=input_files)
  
  write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
@@ -337,6 +340,8 @@ implicit none
   tp2 = tp2 / au2fs  
   t_mid1 = t_mid1 / au2fs   
   t_mid2 = t_mid2 / au2fs   
+  rise_time1 = rise_time1 / au2fs
+  rise_time2 = rise_time2 / au2fs
   fwhm = (4._dp * log(2._dp)) / tp1**2 
   omega1=(1._dp / (lambda1 * 1.e-7_dp)) *cm2au
   omega2=(1._dp / (lambda2 * 1.e-7_dp))* cm2au
