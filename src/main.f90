@@ -78,6 +78,12 @@ module input_vars
 ! guess initial wf
  real(dp):: RI, kappa
 
+! initial TDSE state
+ integer:: N_ini, v_ini
+ integer, allocatable:: v_dist_ini(:)
+ real(dp):: temperature, kappa_tdse, RI_tdse ! for Boltzmann distribution
+ character(2000):: initial_distribution  
+
 ! laser parameters
  character(150):: envelope_shape_laser1, envelope_shape_laser2
  real(dp):: tp1, fwhm, t_mid1, rise_time1
@@ -101,17 +107,16 @@ end module input_vars
 
 module global_vars
  use input_vars
- integer, parameter:: Nx=2048 !, NR=1024
  real(dp):: dR
- real(dp), allocatable:: R(:), x(:)
+ real(dp), allocatable:: R(:)
  real(dp), allocatable:: en(:)
- real(dp), allocatable:: Px(:),PR(:)
+ real(dp), allocatable:: PR(:)
  real(dp), allocatable:: Pot(:,:), chi0(:,:,:)
  real(dp), allocatable, dimension(:,:,:):: mu_all
  real(dp), allocatable, dimension(:,:):: adb
  real(dp):: kap, lam
- real(dp):: dx, dt, xeq
- real(dp):: dpr, dpx 
+ real(dp):: dt
+ real(dp):: dpr 
  real(dp):: omega1, omega2
  real(dp):: mn, mn1, mn2 !all relevent mass veriables
 end module
@@ -138,11 +143,7 @@ end module
 module pot_param
  use data_au
  real(dp):: R0     ! Grid-Parameter, start..
- real(dp),parameter:: x0 = -51.2d0*2*2!/au2a
  real(dp)::Rend   !..and end
- real(dp),parameter:: xend = 51.2d0*2*2!/au2a
- real(dp),parameter:: cpm=6.4d0*2*2!absorber position from the end of x-grid
- real(dp),parameter:: cpmx=6.4d0*2*2*2!absorber position from the end of x-grid
  real(dp),parameter:: cpmR=3.2d0*2*2 !*2 !absorber position from the end of R-grid
 end module pot_param
 
@@ -189,9 +190,8 @@ program TDSE_main
   chi0 = 0.d0
  allocate(El(Nt), Al(Nt)) 
   
-  call blas_check
+!  call blas_check
 
-print*,"test"
 !print*,"test"    
 !  ewf = 0.d0
 !  adb = 0.d0 
@@ -243,6 +243,7 @@ implicit none
  namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix, output_data_dir
  namelist /trans_dip_off/total_trans_off, trans_off
  namelist /absorber_choice/absorber
+ namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
 
  open(newunit=input_tk, file=input, status='old')
  read(input_tk, nml=grid)
@@ -288,8 +289,8 @@ implicit none
  print*, "creating output directory ", trim(mk_out_dir)
  call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
 
- allocate(R(NR), x(Nx), en(NR))
- allocate(pR(NR), px(Nx))
+ allocate(R(NR), en(NR))
+ allocate(pR(NR))
  allocate(adb(NR,Nstates),mu_all(Nstates,Nstates,NR))
 
  call pot_read
@@ -301,14 +302,19 @@ implicit none
  read(input_tk,nml=absorber_choice)
  print*, "Absorber function: ", absorber
 
+ read(input_tk,nml=ini_state)
+ print*, "TDSE Initial State:"
+ print*, "Mode:", trim(initial_distribution)
+ print*, "electronic state(s)", (N_ini-1)
+ print*, "vibrational state(s)", (v_ini-1) 
+
+
 !  R0=0.1/au2a
 !  Rend=15.d0/au2a
 !  R =R/au2a
  R0 =R(1)
  Rend = R(NR)
  dR =R(2)-R(1)!(Rend - R0) / (NR - 1)
- dx = (xend - x0) / (Nx - 1)
- dpx = (2._dp * pi) / (dx * Nx)      
  dpr = (2._dp * pi) / (dR * NR) 
   
 
@@ -316,10 +322,6 @@ implicit none
 !  do I =1,NR
 !    R(I) = R0 + (I - 1) * dR
 !  enddo
-
-  do J=1,Nx
-   x(J) = x0 + (J - 1) * dx
-  enddo
 !--------------------------
 !Masses:
   m1=m1*mass
@@ -353,9 +355,7 @@ implicit none
   print*,'_________________________'
   print*
   print*,'dt = ', SNGL(dt), 'a.u.'
-  print*,'dx = ', SNGL(dx), 'a.u.'
   print*,'dR = ', SNGL(dR), 'a.u.'
-  print*,'dpx = ', SNGL(dpx), 'a.u.'
   print*,'dPR = ', SNGL(dpR), 'a.u.'
   print*,'RI=', sngl(RI), 'a.u.'
   print*,'R0=', sngl(R0), 'a.u.', 'Rend=',sngl(Rend), 'a.u.'
@@ -381,21 +381,10 @@ implicit none
  
 subroutine p_grid
 
-use global_vars, only:px, pR, dpx, dpR, Nx, NR, R, x
+use global_vars, only:pR, dpR, NR, R
 use pot_param
  implicit none 
  integer:: I 
-  
-      
-  do I = 1, Nx  
-    if (I.le.(Nx / 2)) then    
-    Px(I) = (I - 1) * dpx    
-    else    
-    Px(I) = - (Nx + 1 - I) * dpx    
-    end if    
-  end do
-    print*, 'x0=', x0, 'xend=', xend
-    print*, 'Px0=', Px((Nx/2)+1), 'Pxend=', Px(Nx/2) 
   
   do I = 1, NR  
     if (I.le.(NR / 2)) then    

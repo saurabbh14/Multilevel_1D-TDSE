@@ -12,6 +12,10 @@ implicit none
   integer:: istep,void  
   integer*8 planF, planB
   character(1000):: filename, filepath
+  integer :: scount, scount1, scount2,  & ! Starting "time"
+            ecount ! Ending "time"
+  integer  rate, rate1, rate2       ! number of clock ticks per second
+  real(dp) timer_elapsed_time
      
   real(dp):: dt2
   real(dp):: E1, norm
@@ -19,7 +23,6 @@ implicit none
   real(dp):: CONS, thresh
   real(dp):: dummy, R_e, D_e, alpha, Rin
 !  double precision, allocatable:: chi0(:,:)
-  real(dp), parameter:: temperature=3100 
 !  double precision:: total_pop, Boltzmann_populations(guess_Vstates) 
 !  double precision:: trans_dipole(guess_Vstates,guess_Vstates) 
  
@@ -40,6 +43,7 @@ implicit none
     stop
  endif
 
+ call fftw_plan_with_nthreads(omp_get_max_threads())    
  call dfftw_plan_r2r_1d(planF, NR, psi, psi, FFTW_R2HC, FFTW_ESTIMATE)
  call dfftw_plan_r2r_1d(planB, NR, psi, psi, FFTW_HC2R, FFTW_ESTIMATE)
 
@@ -74,8 +78,9 @@ implicit none
 
  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
  open(newunit=vstates_tk,file=filepath,status='unknown')
+ call system_clock(scount,rate)
 Nloop: do J = 1, Nstates ! varying the different adiabatic states
-
+ call system_clock(scount1,rate1)
 
     do i = 1, NR ! new vprop
       vprop(i) = exp(-0.5d0 * dt2 * adb(i,J))
@@ -93,7 +98,7 @@ Nloop: do J = 1, Nstates ! varying the different adiabatic states
         & int(J-1), "_chi0-Evib.out"
  open(newunit=chi0_vib_en_tk,file=filepath,status='unknown')
 Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
-
+ call system_clock(scount2,rate2)
 
       do i = 1, NR  ! symmetry for the startup function
         psi(i) = exp(kappa * (R(I) -Rin )**2) +&
@@ -178,6 +183,9 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
      Vstates(J) = V-1
      exit
   endif
+  call system_clock(ecount)
+  timer_elapsed_time = real(ecount-scount2,8)/real(rate2,8)
+  write(*,*) "Calculated run time for", int(V-1),"on the surface", int(J-1), "is",timer_elapsed_time," seconds"
         
  end do Vloop               ! end of vibrational states loop
  close(vib_en_tk)
@@ -235,8 +243,14 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
     write(chi0_tk,*) R(I), chi0(I,1:vstates(J), J)
   enddo 
   close(chi0_tk)
+  call system_clock(ecount)
+  timer_elapsed_time = real(ecount-scount1,8)/real(rate1,8)
+  write(*,*) "Calculated run time for the surface", int(J-1), "is",timer_elapsed_time," seconds"
 end do Nloop            ! end of surface loop
 close(vstates_tk)
+ call system_clock(ecount)
+ timer_elapsed_time = real(ecount-scount,8)/real(rate,8)
+ write(*,*) "Calculated ITP run time is ",timer_elapsed_time," seconds"
 
 
   call dfftw_destroy_plan(planF)

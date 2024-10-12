@@ -125,8 +125,9 @@ use blas_interfaces_module, only : zgemv, dgemv
  implicit none   
 ! include "/usr/include/fftw3.f" 
  
- integer I, J, K,I_cpmR, II
- integer L, M, N, void
+ integer I, J, K,I_cpmR, II, io
+ integer L, M, N, void, v
+ integer v_ini_check
  integer(idp) planF, planB
  integer eR
  real(dp) dummy, dummy2, dummy3
@@ -145,6 +146,8 @@ use blas_interfaces_module, only : zgemv, dgemv
  real(dp) :: norm_overlap(Nstates),norm_outP(Nstates)
  real(dp) :: norm_gesP(Nstates), norm_gP_over(Nstates)
  real(dp) :: vib_pop(guess_vstates,Nstates) 
+ integer, allocatable, dimension(:) ::vib_ini
+ real(dp), allocatable, dimension(:) ::vib_dist
  real(dp), allocatable, dimension(:):: cof, V_abs
  real(dp), allocatable:: psi_Nstates_real(:), psi_Nstates_imag(:)
  complex(dp):: tout(Nstates,Nstates)
@@ -157,10 +160,12 @@ use blas_interfaces_module, only : zgemv, dgemv
  complex(dp), allocatable, dimension(:):: psi, kprop, kprop1
  complex(dp), allocatable, dimension(:,:):: psi_out1
  complex(dp), allocatable, dimension(:,:):: psi_outR, psi_outR1
+ real(dp), allocatable, dimension(:,:):: psi_outR_inc
  complex(dp), allocatable, dimension(:,:):: psi_gesP
  complex(dp), allocatable, dimension(:):: psi_chi
 
  integer:: chi0_tk, vstates_tk
+ integer:: vib_dist_tk, Boltzmann_dist_tk
  integer:: psi_1d_tk, cof_1d_tk, complex_abs_tk
  integer:: dens_1d_tk, ex_dens_1d_tk, Pdens_1d_tk
  integer:: avgR_1d_tk, avgpR_1d_tk
@@ -177,7 +182,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  allocate(psi_Nstates(Nstates), psi_Nstates1(Nstates))
  allocate(psi_Nstates_real(Nstates), psi_Nstates_imag(Nstates))
  allocate(psi_outR(NR,Nstates),psi_gesP(NR,Nstates))
- allocate(psi_outR1(NR,Nstates))
+ allocate(psi_outR1(NR,Nstates), psi_outR_inc(NR,Nstates))
  allocate(psi_chi(guess_vstates),psi_diss(NR,Nstates),psi_bound(NR,Nstates))
 
  print*
@@ -213,22 +218,69 @@ use blas_interfaces_module, only : zgemv, dgemv
  enddo
  close(vstates_tk)
 
- psi_ges = (0._dp,0._dp)    
- do I = 1, NR
-!   psi_ges(I,1) = (0.55d0*chi0(I,1)+0.23d0*chi0(I,2)+0.11d0*chi0(I,3) &
-!                 & + 0.07d0 * chi0(I,4) + 0.04d0*chi0(I,5)+ 2.0450413213653231E-002*chi0(I,6) &
-!                 & + 1.4033977605843639E-002 *chi0(I,7)+ 1.0613089628800979E-002*chi0(I,8) &
-!                 & + 8.8496818475779886E-003*chi0(I,9)+ 8.0611229210941892E-003*chi0(I,10))   !Thermal distribution over vibrational levels
-   psi_ges(I,1) = chi0(I,1,1) !exp(kappa*(R(I)-RI)**2) !sqrt(0.55d0)*chi0(I,1)+sqrt(0.23d0)*chi0(I,2)+sqrt(0.11d0)*chi0(I,3) &
-                 !& +sqrt( 0.07d0 )* chi0(I,4) + sqrt(0.04d0)*chi0(I,5) ! + sqrt(2.0450413213653231E-002)*chi0(I,6) &
-!                 & +sqrt( 1.4033977605843639E-002) *chi0(I,7)+ sqrt(1.0613089628800979E-002)*chi0(I,8) &
-!                 & +sqrt( 8.8496818475779886E-003)*chi0(I,9)+ sqrt(8.0611229210941892E-003)*chi0(I,10)   !Thermal distribution over vibrational levels
+ psi_ges = (0._dp,0._dp)   
 
-!   psi_ges(I,1)=exp(kappa*(R(I)-RI)**2)
-!   psi_ges(I,1) = sum(chi0(I,:)*sqrt(Boltzmann_populations(:)))
-   kprop(I) = exp(-im *dt * pR(I)*pR(I) /(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
-   kprop1(I) =exp(-im *dt * pR(I)*pR(I) /(2._dp*m_red))
- end do 
+ select case(initial_distribution) 
+ case("single vibrational state")
+  print*, "Initial wavefunction in..."
+  print*, N_ini-1, "electronic state and in", v_ini-1, "vibrational state"
+  do I = 1, NR
+    psi_ges(I,N_ini) = chi0(I,v_ini,N_ini) 
+  enddo  
+
+ case("gaussian distribution")
+  print*, "Initial wavefunction in..."
+  print*, N_ini-1, "electronic state and with a Gaussian distribution centered around",&
+         & RI_tdse, "a.u. \n with deviation of", kappa_tdse, "."
+  do I = 1, NR
+    psi_ges(I,1)=exp(kappa_tdse*(R(I)-RI_tdse)**2) 
+  enddo
+
+! case ("input dist")
+!  allocate(v_dist_ini(N_ini))
+!  v_ini_check = 0
+!  do N = 1, N_ini
+!    write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "vib_dist_", int(N-1), ".out"
+!    open(newunit=vib_dist_tk,file=filepath,status='unknown')
+!    do 
+!     read(vib_dist_tk,*,iostat=io)
+!     if (io /= 0) exit
+!      v_ini_check = v_ini_check + 1
+!    enddo
+!    if (v_ini /= v_ini_check) then
+!      write(*,'(a,a,i0,a)') "Number of vibstates in 'vib_dist_", N, ".out' not equal to input" 
+!    endif
+!  enddo
+!  allocate(vib_ini(guess_vstates,N_ini), vib_dist(guess_vstates, N_ini))
+!  do N = 1, N_ini
+!    do v = 1, v_dist_ini(N)
+!      read(vib_dist_tk,*) vib_ini(v,N), vib_dist(v,N) 
+!    enddo
+!  enddo
+!  do I = 1, NR
+!   do v = 1, v_ini
+!    do N = 1, N_ini
+!     psi_ges(I,N) = psi_ges(I,N) + vib_dist(vib_ini(v,N),N) * chi0(I,vib_ini(v,N),N)
+!    enddo
+!   enddo
+!  enddo
+
+ case ("Boltzmann dist")
+  do N = 1, N_ini
+   call Boltzmann_distribution(N,vib_dist)
+   do v = 1, Vstates(N)
+    do I = 1, NR
+      psi_ges(I,N) = psi_ges(I,N) + vib_dist(v) * chi0(I,v,N)
+    enddo
+   enddo
+  enddo
+
+ case default
+  do I = 1, NR
+   psi_ges(I,1) = chi0(I,1,1)
+  enddo
+
+ end select
  
  ! cpm = 3.d0/ au2a
  ! call cutoff_cos(cpm,cof)
@@ -303,9 +355,14 @@ close(cof_1d_tk)
  print*
     
  psi_outR = (0._dp,0._dp)
+ psi_outR_inc = 0._dp
  norm = 0._dp
  normPn = 0._dp
  norm_outR = 0._dp
+ do I = 1, NR
+   kprop(I) = exp(-im *dt * pR(I)*pR(I) /(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
+   kprop1(I) =exp(-im *dt * pR(I)*pR(I) /(2._dp*m_red))
+ end do 
  
 timeloop: do K = 1, Nt
 
@@ -447,6 +504,7 @@ timeloop: do K = 1, Nt
      psi_outR1(:,J) = psi(:)
    enddo
    psi_outR = psi_outR + psi_outR1
+   psi_outR_inc = psi_outR_inc + abs(psi_outR1)**2
    ! Momentum space density
    if (mod(K,100) .eq. 0) then
     do I = NR/2 +1, NR, 4
@@ -457,54 +515,6 @@ timeloop: do K = 1, Nt
     end do 
     write(psi_outR_Pdens_1d_tk,*)
    endif
-
-!   psi_gesP=psi_ges
-!   do j=1,Nstates
-!     do i=1,nr
-!      psi(i)=psi_gesP(i,j)
-!     end do
-!      call dfftw_execute(planF)
-!      psi=psi/sqrt(dble(nr))
-!     do i=1,NR
-!      psi_gesP(i,j)=psi(i)
-!     enddo
-!   enddo
-!   norm_gP_over(1)=2.0d0*dot_product(psi_outR(:,1),psi_gesP(:,1))*dr
-!   norm_gP_over(2)=2.0d0*dot_product(psi_outR(:,2),psi_gesP(:,2))*dr
-!
-!!   write(1000,*) sngl(time*au2fs), sngl(norm_overlap), sngl(norm1), sngl(norm_gesP),sngl(norm_gP_over)
-!
-!    call integ(psi_outR, norm_outP)
-!
-!    do j=1,Nstates
-!  !   if (norm_outP(J).ge.3.d-8) then
-!        psi_out(:,j)=psi_out(:,j)+psi_outR(:,j)!/sqrt(norm_outP(J))
-!  !   end if
-!   enddo
-!   norm_out=0.00d0
-!
-!   do J=1,Nstates
-!     do i=1,NR
-!        norm_out(J)=norm_out(J)+abs(psi_out(I,J))**2
-!     enddo
-!    enddo
-!      norm_out= norm_out*dr
-!
-!   do J=1,Nstates
-!      psi_out(:,J)=psi_out(:,J)!/sqrt(norm_out(J))
-!   enddo
-!
-!   do I=1,NR
-!     momt(1)=momt(1)+pr(I)*abs(psi_out(I,1))**2
-!     momt(2)=momt(2)+pr(I)*abs(psi_out(I,2))**2
-!   enddo
-!!   momt=momt*dr
-!    momt(1)=momt(1)/(sum(abs(psi_out(:,1))**2))
-!    momt(2)=momt(2)/(sum(abs(psi_out(:,2))**2))
-!
-
-
-!   write(998,*) sngl(time* au2fs),sngl((momt(1))),sngl((momt(2))), norm_outP
 
 ! ------------   
 
@@ -565,7 +575,7 @@ end do timeloop
       write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2, &
               & abs(psi_outR(I,N)/sqrt(norm_outR(N)))**2
       write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N))**2 / pR(I),&
-              & m_red*abs(psi_outR(I,N))**2 / pR(I) 
+              & m_red*abs(psi_outR(I,N))**2 / pR(I), m_red*abs(psi_outR_inc(I,N))/pR(I) 
       write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2 / pR(I), &
               & m_red*abs(psi_outR(I,N)/sqrt(norm_outR(N)))**2 / pR(I) 
     enddo
@@ -575,13 +585,13 @@ end do timeloop
     close(KER_spectra_tk)
   enddo
 
-  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra_unnormalized.out"
-  open(newunit=KER_spectra_un_tk,file=filepath,status='unknown')
-  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra_unnormalized.out"
-  open(newunit=momt_spectra_un_tk,file=filepath,status='unknown')
   write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra.out"
-  open(newunit=KER_spectra_tk,file=filepath,status='unknown')
+  open(newunit=KER_spectra_un_tk,file=filepath,status='unknown')
   write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra.out"
+  open(newunit=momt_spectra_un_tk,file=filepath,status='unknown')
+  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra_normalized.out"
+  open(newunit=KER_spectra_tk,file=filepath,status='unknown')
+  write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra_normalized.out"
   open(newunit=momt_spectra_tk,file=filepath,status='unknown')
   do I=NR/2 +1,NR
     write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2)
@@ -593,7 +603,7 @@ end do timeloop
     write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
               & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
     write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:))**2) / pR(I), &
-              & m_red*sum(abs(psi_outR(I,:))**2) / pR(I)
+              & m_red*sum(abs(psi_outR(I,:))**2) / pR(I), m_red*sum(abs(psi_outR_inc(I,:)))/pR(I)
     write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2) /pR(I), &
               & m_red*sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2) / pR(I)
   enddo
@@ -610,60 +620,91 @@ end do timeloop
    
  deallocate(psi, kprop, psi_ges, cof, psi_loc, psi_outR1,psi_outR, psi_gesP)
 
-return
-end subroutine
-
+ contains
 
 !_________________________________________________________
 
-subroutine complex_absorber_function(v_abs, f)
-use global_vars, only: NR, dp, dR, dt, R
-use data_au, only: im
-use pot_param, only: cpmR
- implicit none
- integer I
- real(dp):: a, eps, V_abs(NR), n, R0, p
- complex(dp):: iV_abs(NR), f(NR)
- 
- eps = epsilon(a) 
- print*, "Lower limit of the precision:", eps
- n = 4 ! power of absorber function
- R0 = R(NR)- cpmR ! start of the absorber
- p = 20._dp ! optimal absorption momentum
- a = -log(eps) *(n+1) *p / (2*(R(NR)-R0)**(n+1))
- print*, "Absorber prefactor a:", a
+   subroutine Boltzmann_distribution(N, Boltzmann_populations)
+   use global_vars, only: temperature, dp
+   implicit none
+    integer:: N, V
+    real(dp), allocatable, intent(out):: Boltzmann_populations(:)
+    real(dp):: total_pop
+           
+    total_pop = sum(exp(-E(:)/(kB*temperature)))
+    print*, "total populations =", total_pop
+   
+    allocate(Boltzmann_populations(Vstates(N)))
+    do V = 1, Vstates(N)
+      if (V .gt. 1) then
+      Boltzmann_populations(V) = exp(-(E(V)-E(1))/(kB*temperature))!/total_pop
+      else
+      Boltzmann_populations(V)=1._dp
+      endif
+      print*, "state", V-1, "population ratio =", Boltzmann_populations(V)
+    enddo
+   
+    total_pop = sum(Boltzmann_populations(:))
+    print*, "sum of ratios =", total_pop
+    Boltzmann_populations = Boltzmann_populations/total_pop
+    total_pop = sum(Boltzmann_populations(:))
+    print*, "total population =", total_pop
+   
+    do V =1, Vstates(N)
+      print*, "state", V-1, "population probability =", Boltzmann_populations(V)
+    enddo  
 
- do I = 1, NR
-  if (R(I) .gt. abs(R0)) then
-    V_abs(I) = a*(R(I)-R0)**n
-  else
-    V_abs(I) = 0._dp
-  endif
- enddo
- f(:) = exp(-dt *V_abs(:))
-end subroutine
+   end subroutine
+
+!---------------------------------------------------------------
+
+   subroutine complex_absorber_function(v_abs, f)
+   use global_vars, only: NR, dp, dR, dt, R
+   use data_au, only: im
+   use pot_param, only: cpmR
+    implicit none
+    integer I
+    real(dp):: a, eps, V_abs(NR), n, R0, p
+    complex(dp):: iV_abs(NR), f(NR)
+    
+    eps = epsilon(a) 
+    print*, "Lower limit of the precision:", eps
+    n = 4 ! power of absorber function
+    R0 = R(NR)- cpmR ! start of the absorber
+    p = 20._dp ! optimal absorption momentum
+    a = -log(eps) *(n+1) *p / (2*(R(NR)-R0)**(n+1))
+    print*, "Absorber prefactor a:", a
+   
+    do I = 1, NR
+     if (R(I) .gt. abs(R0)) then
+       V_abs(I) = a*(R(I)-R0)**n
+     else
+       V_abs(I) = 0._dp
+     endif
+    enddo
+    f(:) = exp(-dt *V_abs(:))
+   end subroutine
 !------------------------------------------------------------------
-subroutine integ(psi, norm)
-      
-use global_vars, only:NR, Nstates, dR, dp
- implicit none
- integer I, J
-      
- real(dp) norm(Nstates)
- complex(dp) psi(NR,Nstates)
-      
- norm = 0.d0
- 
- do J = 1, Nstates
-    norm(J)= sum(abs(psi(:,J))**2)   
- end do
- 
-   norm = norm * dR
-     
-     
-return 
-end subroutine
-
+   subroutine integ(psi, norm)
+         
+   use global_vars, only:NR, Nstates, dR, dp
+    implicit none
+    integer I, J
+         
+    real(dp) norm(Nstates)
+    complex(dp) psi(NR,Nstates)
+         
+    norm = 0.d0
+    
+    do J = 1, Nstates
+       norm(J)= sum(abs(psi(:,J))**2)   
+    end do
+    
+      norm = norm * dR
+        
+        
+   return 
+   end subroutine
 
 !______________________________________________________________
 
@@ -692,134 +733,136 @@ end subroutine
 !
 !!------------------------------------------
 
-subroutine pulse2(tout,mu,E)
-
-use global_vars, only:dt, Nstates,kap, lam, dp, idp
-use data_au, only:im
-use blas_interfaces_module, only : zgemv, dgemv
-
-implicit none
-
- integer:: i, J
- real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
- integer Info, Lwork
-
- complex(dp):: tout, b, z, p, pT
- dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
-         & z(Nstates,Nstates), tout(Nstates,Nstates), &
-         & p(Nstates,Nstates), uv(Nstates,Nstates), &
-         & pT(Nstates,Nstates)
- real(dp) work(1000) 
- character(len=1):: JOBZ
-
+   subroutine pulse2(tout,mu,E)
+   
+   use global_vars, only:dt, Nstates,kap, lam, dp, idp
+   use data_au, only:im
+   use blas_interfaces_module, only : zgemv, dgemv
+   
+   implicit none
+   
+    integer:: i, J
+    real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
+    integer Info, Lwork
+   
+    complex(dp):: tout, b, z, p, pT
+    dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
+            & z(Nstates,Nstates), tout(Nstates,Nstates), &
+            & p(Nstates,Nstates), uv(Nstates,Nstates), &
+            & pT(Nstates,Nstates)
+    real(dp) work(1000) 
+    character(len=1):: JOBZ
+   
+       
+   !u(1,1) = 0.d0
+   !u(1,2) = -kap*mu(1,2) * E
+   
+   !u(2,1) = -kap*mu(2,1) * E
+   !u(2,2) = 0.d0
+   
+   !Diapole matrix
+   u=0._dp
+   do I=1, Nstates-1
+    do J=I+1, Nstates
+          u(I,J)= -kap*mu(I,J) * E
+          u(J,I)= -kap*mu(I,J) * E
+    enddo
+   enddo
+   !print*, "u"
+   !write( * , * ) ((u(i,j),j=1,Nstates), i=1,Nstates )
     
-!u(1,1) = 0.d0
-!u(1,2) = -kap*mu(1,2) * E
-
-!u(2,1) = -kap*mu(2,1) * E
-!u(2,2) = 0.d0
-
-!Diapole matrix
-u=0._dp
-do I=1, Nstates-1
- do J=I+1, Nstates
-       u(I,J)= -kap*mu(I,J) * E
-       u(J,I)= -kap*mu(I,J) * E
- enddo
-enddo
-!print*, "u"
-!write( * , * ) ((u(i,j),j=1,Nstates), i=1,Nstates )
- 
-uv = 0._dp
-uv = u
-
-Lwork=-1
-JOBZ='V'
- call dsyev(JOBZ,'U', int(Nstates), uv, int(Nstates), &
-        & d, work, Lwork,info)
-! call jacobi(u,Nstates,d)
- Lwork = min(1000, int(work(1)))
-!     Solve eigenproblem.
- call dsyev('V', 'U', int(Nstates), uv, int(Nstates), &
-        & d, work, Lwork, info)
-
- if( info.gt.0 ) then
-     write(*,*)'The algorithm failed to compute eigenvalues.'
-     stop
- endif
- 
- p = (0._dp,0._dp)
- p = uv ! transfering eigenvectors to a complex array
-!print*,"eigen vector p"
-!write( * , * ) ( (p(i,j),j=1,Nstates), i=1,Nstates )
-
- b= (0._dp,0._dp)
- do J = 1,Nstates  
-   b(J,J) = exp(-im * dt * d(J)) ! exponentiate diagonal matrix i.e. eigenvalues
- end do
-!print*, "b"
-!write( * , * ) ((b(i,j),j=1,Nstates), i=1,Nstates )
-
-! Calculating e^u = P (e^d) P^(-1)
-!z = matmul(p,b)
- call zgemm('N', 'N', int(Nstates), int(Nstates), &
-         & int(Nstates),(1._dp,0._dp), p, size(p,dim=1), &
-         & b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
-!print*, "z"
-!write( * , * ) ((z(i,j),j=1,Nstates), i=1,Nstates )
-pT = transpose(p)
-!tout = matmul(z,transpose(p))
- call zgemm('N', 'N', int(Nstates), int(Nstates), &
-         & int(Nstates),(1._dp,0._dp), z, size(z,dim=1), &
-         & pT, size(pT,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
-!print*, "tout"
-!write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
-
-return
-end subroutine
+   uv = 0._dp
+   uv = u
+   
+   Lwork=-1
+   JOBZ='V'
+    call dsyev(JOBZ,'U', int(Nstates), uv, int(Nstates), &
+           & d, work, Lwork,info)
+   ! call jacobi(u,Nstates,d)
+    Lwork = min(1000, int(work(1)))
+   !     Solve eigenproblem.
+    call dsyev('V', 'U', int(Nstates), uv, int(Nstates), &
+           & d, work, Lwork, info)
+   
+    if( info.gt.0 ) then
+        write(*,*)'The algorithm failed to compute eigenvalues.'
+        stop
+    endif
+    
+    p = (0._dp,0._dp)
+    p = uv ! transfering eigenvectors to a complex array
+   !print*,"eigen vector p"
+   !write( * , * ) ( (p(i,j),j=1,Nstates), i=1,Nstates )
+   
+    b= (0._dp,0._dp)
+    do J = 1,Nstates  
+      b(J,J) = exp(-im * dt * d(J)) ! exponentiate diagonal matrix i.e. eigenvalues
+    end do
+   !print*, "b"
+   !write( * , * ) ((b(i,j),j=1,Nstates), i=1,Nstates )
+   
+   ! Calculating e^u = P (e^d) P^(-1)
+   !z = matmul(p,b)
+    call zgemm('N', 'N', int(Nstates), int(Nstates), &
+            & int(Nstates),(1._dp,0._dp), p, size(p,dim=1), &
+            & b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
+   !print*, "z"
+   !write( * , * ) ((z(i,j),j=1,Nstates), i=1,Nstates )
+   pT = transpose(p)
+   !tout = matmul(z,transpose(p))
+    call zgemm('N', 'N', int(Nstates), int(Nstates), &
+            & int(Nstates),(1._dp,0._dp), z, size(z,dim=1), &
+            & pT, size(pT,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
+   !print*, "tout"
+   !write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
+   
+   return
+   end subroutine
 
 !!------------------------------------------------
-subroutine mask_function_cos(cof)
-use global_vars, only:NR, R, dR, dp
-use data_au
-use pot_param
-
-implicit none
-
-   integer :: J
-   real(dp):: cof(NR)
-
-   do j = 1, NR
-    R(J) = R0 + (j - 1) * dR
-    if(R(J).lt.(Rend - cpmR)) then
-    cof(j) = 1.d0
-    else
-    cof(j) = cos(((R(J) - Rend + cpmR) / -cpmR) * (0.5d0 * pi))
-    cof(j) = cof(j)**2
-    end if
-   end do
-
- return
- end subroutine
+   subroutine mask_function_cos(cof)
+   use global_vars, only:NR, R, dR, dp
+   use data_au
+   use pot_param
+   
+   implicit none
+   
+      integer :: J
+      real(dp):: cof(NR)
+   
+      do j = 1, NR
+       R(J) = R0 + (j - 1) * dR
+       if(R(J).lt.(Rend - cpmR)) then
+       cof(j) = 1.d0
+       else
+       cof(j) = cos(((R(J) - Rend + cpmR) / -cpmR) * (0.5d0 * pi))
+       cof(j) = cof(j)**2
+       end if
+      end do
+   
+    return
+   end subroutine
 !------------------------------------------------
- subroutine mask_function_ex(cof)
- use global_vars, only:NR, R, dR, dp
- use data_au
- use pot_param
+   subroutine mask_function_ex(cof)
+   use global_vars, only:NR, R, dR, dp
+   use data_au
+   use pot_param
+  
+    implicit none
+  
+    integer :: J
+    real(dp):: cof(NR),c
+  
+    c=1.00d0
+   do j = 1, NR
+     R(J) = R0 + (j - 1) * dR
+     cof(j)=1.0d0/(1.0d0+exp(c*(R(J)-Rend+cpmR)))
+   end do
+  
+   return
+   end subroutine
 
-  implicit none
-
-  integer :: J
-  real(dp):: cof(NR),c
-
-  c=1.00d0
- do j = 1, NR
-   R(J) = R0 + (j - 1) * dR
-   cof(j)=1.0d0/(1.0d0+exp(c*(R(J)-Rend+cpmR)))
- end do
-
- return
- end subroutine
+end subroutine
 
 !!-------------------------
 !
