@@ -523,7 +523,7 @@ end do timeloop
 !Final vibrational population in ground state
   do N =1, Nstates
     print*
-    print*, "Final vibrational poppulation in the elec. state", int(N-1)
+    print*, "Final vibrational population in the elec. state", int(N-1)
     print*, "Number of vibrational states:", vstates(N)
     psi_bound = 0._dp
     do J = 1,vstates(N)

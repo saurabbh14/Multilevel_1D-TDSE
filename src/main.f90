@@ -171,8 +171,6 @@ program TDSE_main
  integer  rate       ! number of clock ticks per second
 
  real(dp) st, ft,timer_elapsed_time
- character(150):: filepath
- logical ext
  real(dp) Emax
  real(dp), allocatable:: El(:), Al(:)
   
@@ -197,13 +195,8 @@ program TDSE_main
 !  adb = 0.d0 
 !
 !  call adiabatic_surface(adb, mu_all) 
-do J = 1, 1
-  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
-        & int(J-1), "_vibstates.out"
-  inquire(file=filepath, Exist=Ext)
-  print*, trim(filepath), " ", Ext
-  if (.not. Ext) call nuclear_wavefkt
-enddo
+ 
+  call nuclear_wavefkt
 
   call pulse(El, Al)
   call propagation_1D(El, Al)

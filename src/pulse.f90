@@ -54,6 +54,7 @@ write(filename,fmt='(a,a)') adjustl(trim(output_data_dir)), 'IR+2Eeff.dat'
 open(newunit=IR_Eeff_field_tk, file=filename,status="unknown")
 
  print*
+ print*, "Pulse generation..."
  print*,'Tuning FFTW...'
  void=fftw_init_threads( )
  if (void==0) then
@@ -71,7 +72,7 @@ call dfftw_plan_dft_1d(planTF, Nt2, E_dum, E_dum, FFTW_FORWARD, FFTW_ESTIMATE)
 call dfftw_plan_dft_1d(planTB, Nt2, E_dum, E_dum, FFTW_BACKWARD, FFTW_ESTIMATE)
 call dfftw_plan_dft_1d(planTF2, Nt, E2_dum, F2_dum, FFTW_FORWARD, FFTW_ESTIMATE)
 call dfftw_plan_dft_1d(planTB2, Nt, F2_dum, E2_dum, FFTW_BACKWARD, FFTW_ESTIMATE)
-
+print*, "Done"
 
 time_end = Nt*dt
 time_start = (t_mid2- tp2/2)
@@ -227,6 +228,7 @@ call dfftw_destroy_plan(planTB)
 call dfftw_destroy_plan(planTF2)
 call dfftw_destroy_plan(planTB2)
 
+print*, "Pulse generation complete."
 end subroutine
  
 !------------------------------------------------------------------------------

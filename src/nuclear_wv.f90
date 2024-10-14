@@ -16,6 +16,7 @@ implicit none
             ecount ! Ending "time"
   integer  rate, rate1, rate2       ! number of clock ticks per second
   real(dp) timer_elapsed_time
+  logical ext
      
   real(dp):: dt2
   real(dp):: E1, norm
@@ -80,7 +81,13 @@ implicit none
  open(newunit=vstates_tk,file=filepath,status='unknown')
  call system_clock(scount,rate)
 Nloop: do J = 1, Nstates ! varying the different adiabatic states
- call system_clock(scount1,rate1)
+  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
+        & int(J-1), "_vibstates.out"
+  inquire(file=filepath, Exist=Ext)
+  print*, trim(filepath), " ", Ext
+  if (Ext) exit ! Exiting the ITP if the vibrational wavepackets exist.
+
+  call system_clock(scount1,rate1)
 
     do i = 1, NR ! new vprop
       vprop(i) = exp(-0.5d0 * dt2 * adb(i,J))
@@ -142,6 +149,7 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
 
       if(abs(E(V) - E1).le.thresh) then
         print*, 'Surface', J-1, 'Vibrational state', V-1, E(V) * au2eV, 'eV'
+        print*, 'Resonance freq for dissociation', (adb(NR,J)-E(V))*au2eV, 'eV'
         print*, 'Resonance freq for dissociation', eV2nm/((adb(NR,J)-E(V))*au2eV), 'nm'
         if (V.gt.1) then
           do G=1,(V-1)
@@ -149,9 +157,8 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
                     & eV2nm/(abs(E(G)-E(V))*au2eV), "nm E=", abs(E(G)-E(V))*au2eV, "eV"
           enddo
         endif
-        print*,""
         
-      write(vib_en_tk,*) v-1, e(V)*au2ev
+        write(vib_en_tk,*) v-1, e(V)*au2ev
       
         do I = 1, NR
          ref(I,V) = psi(I)             ! storing as reference for the next loop
@@ -186,7 +193,7 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
   call system_clock(ecount)
   timer_elapsed_time = real(ecount-scount2,8)/real(rate2,8)
   write(*,*) "Calculated run time for", int(V-1),"on the surface", int(J-1), "is",timer_elapsed_time," seconds"
-        
+  print*,""
  end do Vloop               ! end of vibrational states loop
  close(vib_en_tk)
  close(chi0_vib_en_tk)
@@ -236,16 +243,17 @@ Vloop:   do V = 1, guess_Vstates ! loop over the vibrational state
  enddo
  enddo
 
-  write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
+ write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
         & int(J-1), "_vibstates.out"
  open(newunit=chi0_tk,file=filepath,status='unknown')
-  do I = 1, NR
-    write(chi0_tk,*) R(I), chi0(I,1:vstates(J), J)
-  enddo 
-  close(chi0_tk)
-  call system_clock(ecount)
-  timer_elapsed_time = real(ecount-scount1,8)/real(rate1,8)
-  write(*,*) "Calculated run time for the surface", int(J-1), "is",timer_elapsed_time," seconds"
+ do I = 1, NR
+   write(chi0_tk,*) R(I), chi0(I,1:vstates(J), J)
+ enddo 
+ close(chi0_tk)
+ call system_clock(ecount)
+ timer_elapsed_time = real(ecount-scount1,8)/real(rate1,8)
+ write(*,*) "Calculated run time for the surface", int(J-1), "is",timer_elapsed_time," seconds"
+ print*
 end do Nloop            ! end of surface loop
 close(vstates_tk)
  call system_clock(ecount)
