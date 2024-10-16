@@ -42,12 +42,20 @@ implicit none
  if (void==0) then
     write(*,*) 'Error in fftw_init_threads, quitting'
     stop
+ else
+    write(*,*) 'Thread initialization =', void
  endif
 
- call fftw_plan_with_nthreads(omp_get_max_threads())    
- call dfftw_plan_r2r_1d(planF, NR, psi, psi, FFTW_R2HC, FFTW_ESTIMATE)
- call dfftw_plan_r2r_1d(planB, NR, psi, psi, FFTW_HC2R, FFTW_ESTIMATE)
+ select case(ITP_par_FFTW)
+ case("parallel")
+   call fftw_plan_with_nthreads(omp_get_max_threads())    
+   call dfftw_plan_r2r_1d(planF, NR, psi, psi, FFTW_R2HC, FFTW_ESTIMATE)
+   call dfftw_plan_r2r_1d(planB, NR, psi, psi, FFTW_HC2R, FFTW_ESTIMATE)
 
+ case default
+   call dfftw_plan_r2r_1d(planF, NR, psi, psi, FFTW_R2HC, FFTW_ESTIMATE)
+   call dfftw_plan_r2r_1d(planB, NR, psi, psi, FFTW_HC2R, FFTW_ESTIMATE)
+ end select
 
   dt2 = dt!*10
   thresh = 1.d-18 
@@ -85,7 +93,7 @@ Nloop: do J = 1, Nstates ! varying the different adiabatic states
         & int(J-1), "_vibstates.out"
   inquire(file=filepath, Exist=Ext)
   print*, trim(filepath), " ", Ext
-  if (Ext) exit ! Exiting the ITP if the vibrational wavepackets exist.
+  if (Ext) cycle ! Exiting the ITP if the vibrational wavepackets exist.
 
   call system_clock(scount1,rate1)
 

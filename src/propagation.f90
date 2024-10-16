@@ -123,7 +123,6 @@ use omp_lib
 use blas_interfaces_module, only : zgemv, dgemv
 
  implicit none   
-! include "/usr/include/fftw3.f" 
  
  integer I, J, K,I_cpmR, II, io
  integer L, M, N, void, v
@@ -187,18 +186,24 @@ use blas_interfaces_module, only : zgemv, dgemv
 
  print*
  print*,'Tuning FFTW...'
-
- void=fftw_init_threads()
+ void=fftw_init_threads( )
  if (void .eq. 0) then
     print*, 'Error in fftw_init_threads, quitting'
+ else
+    print*, 'number of threads found =', void
  endif
- 
-! call fftw_plan_with_nthreads(1)    
-! call fftw_plan_with_nthreads(omp_get_num_threads())    
- call fftw_plan_with_nthreads(omp_get_max_threads())    
- call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
- call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
-  
+
+ select case(prop_par_FFTW)
+ case ("parallel")
+  ! call fftw_plan_with_nthreads(omp_get_num_threads())    
+   call fftw_plan_with_nthreads(omp_get_max_threads())    
+   call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
+   call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
+
+ case default ! single thread FFTW
+   call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
+   call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
+ end select  
              
  print*,'Done.'
  print*  

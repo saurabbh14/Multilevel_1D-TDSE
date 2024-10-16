@@ -103,6 +103,10 @@ module input_vars
 ! Absorber choice
  character(5):: absorber
 
+! FFTW parallelization
+ character(10):: prop_par_FFTW
+ character(10):: ITP_par_FFTW
+
 end module input_vars
 
 module global_vars
@@ -207,9 +211,7 @@ program TDSE_main
  call system_clock(ecount)
  timer_elapsed_time = real(ecount-scount,8)/real(rate,8)
  write(*,*) "Calculated run time is ",timer_elapsed_time," seconds"
-
- 
-stop  
+  
 end program
 
 
@@ -237,6 +239,7 @@ implicit none
  namelist /trans_dip_off/total_trans_off, trans_off
  namelist /absorber_choice/absorber
  namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
+ namelist /parallelization/prop_par_FFTW,ITP_par_FFTW
 
  open(newunit=input_tk, file=input, status='old')
  read(input_tk, nml=grid)
@@ -301,6 +304,10 @@ implicit none
  print*, "electronic state(s)", (N_ini-1)
  print*, "vibrational state(s)", (v_ini-1) 
 
+ read(input_tk,nml=parallelization)
+ print*, "FFTW Parallelization:"
+ print*, "TDSE Propagation FFTW: ", trim(prop_par_FFTW)
+ print*, "ITP FFTW: ", trim(ITP_par_FFTW)
 
 !  R0=0.1/au2a
 !  Rend=15.d0/au2a
