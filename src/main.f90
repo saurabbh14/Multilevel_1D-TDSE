@@ -302,7 +302,10 @@ implicit none
  print*, "TDSE Initial State:"
  print*, "Mode:", trim(initial_distribution)
  print*, "electronic state(s)", (N_ini-1)
- print*, "vibrational state(s)", (v_ini-1) 
+ print*, "vibrational state(s)", (v_ini-1)
+ print*, "Gaussian Distribution TDSE:" 
+ print*, "centered at RI: ", RI_tdse
+ print*, "standard deviation: ", kappa_tdse
 
  read(input_tk,nml=parallelization)
  print*, "FFTW Parallelization:"
