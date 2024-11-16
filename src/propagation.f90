@@ -127,7 +127,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  integer I, J, K,I_cpmR, II, io
  integer L, M, N, void, v
  integer v_ini_check
- integer(idp) planF, planB
+ type(C_PTR) planF, planB
  integer eR
  real(dp) dummy, dummy2, dummy3
  character(150):: filepath
@@ -195,14 +195,13 @@ use blas_interfaces_module, only : zgemv, dgemv
 
  select case(prop_par_FFTW)
  case ("parallel")
-  ! call fftw_plan_with_nthreads(omp_get_num_threads())    
    call fftw_plan_with_nthreads(omp_get_max_threads())    
-   call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
-   call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
+   planF = fftw_plan_dft_1d(NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
+   planB = fftw_plan_dft_1d(NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
 
  case default ! single thread FFTW
-   call dfftw_plan_dft_1d(planF, NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
-   call dfftw_plan_dft_1d(planB, NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
+   planF = fftw_plan_dft_1d(NR, psi, psi, FFTW_FORWARD,FFTW_MEASURE)
+   planB = fftw_plan_dft_1d(NR, psi, psi, FFTW_BACKWARD,FFTW_MEASURE)
  end select  
              
  print*,'Done.'
@@ -384,9 +383,9 @@ timeloop: do K = 1, Nt
    do J = 1,Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
-     call dfftw_execute_dft(planF, psi, psi)
+     call fftw_execute_dft(planF, psi, psi)
      psi = psi * kprop
-     call dfftw_execute_dft(planB, psi, psi)
+     call fftw_execute_dft(planB, psi, psi)
      psi = psi / dble(NR)
      psi_ges(:,J) = psi(:)      
    end do
@@ -421,13 +420,13 @@ timeloop: do K = 1, Nt
    do J = 1,Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_ges(:,J)  ! Hilfsgroesse
-     call dfftw_execute_dft(planF, psi, psi) 
+     call fftw_execute_dft(planF, psi, psi) 
      psi = psi * kprop 
      psi = psi /sqrt(dble(nr))     
      epr(j) =  sum(abs(psi(:))**2 * pr(:))
      epr(j) = epr(j) * dr
      psi_ges_p(:,J) = psi(:)
-     call dfftw_execute_dft(planB, psi, psi)
+     call fftw_execute_dft(planB, psi, psi)
      psi = psi / sqrt(dble(NR))
      psi_ges(:,J) = psi(:)      
    end do     
@@ -504,7 +503,7 @@ timeloop: do K = 1, Nt
    do J = 1, Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_outR1(:,J)
-     call dfftw_execute_dft(planF, psi, psi)
+     call fftw_execute_dft(planF, psi, psi)
      psi = psi/sqrt(dble(NR))
      psi_outR1(:,J) = psi(:)
    enddo
@@ -552,7 +551,7 @@ end do timeloop
             sum(abs(psi_outR(:,N))**2)*dR
     print*, 'Calculating KER spectra in state ', int(N-1)
     psi(:) = psi_diss(:,N)
-    call dfftw_execute_dft(planF, psi, psi)
+    call fftw_execute_dft(planF, psi, psi)
     psi=psi/sqrt(dble(NR))
     psi_diss(:,N)=psi(:)
     norm_diss(N)=sum(abs(psi_diss(:,N))**2)*dR
@@ -620,8 +619,8 @@ end do timeloop
  
 ! ------------   
                                       
- call dfftw_destroy_plan(planF)
- call dfftw_destroy_plan(planB)
+ call fftw_destroy_plan(planF)
+ call fftw_destroy_plan(planB)
    
  deallocate(psi, kprop, psi_ges, cof, psi_loc, psi_outR1,psi_outR, psi_gesP)
 

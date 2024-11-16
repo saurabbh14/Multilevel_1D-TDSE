@@ -59,8 +59,9 @@ end module var_precision
 module input_vars
  use commandline_args
  use var_precision, only: dp, idp
+ use, intrinsic :: iso_c_binding
 ! R-grid
- integer:: NR 
+ integer(C_INT):: NR 
 
 ! electronic states
  integer:: Nstates
@@ -153,7 +154,8 @@ end module pot_param
 
 module FFTW3
   use, intrinsic :: iso_c_binding
-  include "fftw3.f03"
+  implicit none
+  include 'fftw3.f03'
 !  include '/usr/include/fftw3.f03'                                        ! Desktop packet
 !  include '/home/me23jok/ProjectX/FFTW3/include/fftw3.f03' ! ARA cluster
 !  include '/usr/local/include/fftw3.f03'

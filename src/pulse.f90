@@ -9,7 +9,7 @@ use omp_lib
 implicit none
 
 integer k, void, Nt2
-integer*8 planTF, planTB, planTF2, planTB2
+type(C_PTR) planTF, planTB, planTF2, planTB2
 character(150) filename
 real(dp) time
 real(dp) E2(Nt), E21(Nt), E22(Nt), E(Nt)
@@ -68,10 +68,10 @@ allocate(E_dum(Nt2), F_dum(Nt2))
 allocate(E2_dum(Nt), F2_dum(Nt))
 
 call fftw_plan_with_nthreads(omp_get_max_threads())
-call dfftw_plan_dft_1d(planTF, Nt2, E_dum, E_dum, FFTW_FORWARD, FFTW_ESTIMATE)
-call dfftw_plan_dft_1d(planTB, Nt2, E_dum, E_dum, FFTW_BACKWARD, FFTW_ESTIMATE)
-call dfftw_plan_dft_1d(planTF2, Nt, E2_dum, F2_dum, FFTW_FORWARD, FFTW_ESTIMATE)
-call dfftw_plan_dft_1d(planTB2, Nt, F2_dum, E2_dum, FFTW_BACKWARD, FFTW_ESTIMATE)
+planTF = fftw_plan_dft_1d(Nt2, E_dum, E_dum, FFTW_FORWARD, FFTW_ESTIMATE)
+planTB = fftw_plan_dft_1d(Nt2, E_dum, E_dum, FFTW_BACKWARD, FFTW_ESTIMATE)
+planTF2 = fftw_plan_dft_1d(Nt, E2_dum, F2_dum, FFTW_FORWARD, FFTW_ESTIMATE)
+planTB2 = fftw_plan_dft_1d(Nt, F2_dum, E2_dum, FFTW_BACKWARD, FFTW_ESTIMATE)
 print*, "Done"
 
 time_end = Nt*dt
@@ -176,9 +176,9 @@ write(filename,fmt='(a,a,i0,a)') adjustl(trim(output_data_dir)), &
         & 'IR-field_time_lambda',int(lambda1),'nm.out'
 open(newunit=IR_field_time_tk, file=filename,status="unknown")
 E2_dum = E
-call dfftw_execute(planTF2,E2_dum, F2_dum)
+call fftw_execute_dft(planTF2,E2_dum, F2_dum)
 F2_dum = F2_dum/sqrt(dble(Nt))
-call dfftw_execute(planTB, F2_dum, E2_dum)
+call fftw_execute_dft(planTB, F2_dum, E2_dum)
 E2_dum = E2_dum/sqrt(dble(Nt))
 
 do K = Nt/2+1, Nt
@@ -223,10 +223,10 @@ close(IR_field_time_tk)
 !!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 E2 = E ! IR field
 
-call dfftw_destroy_plan(planTF)
-call dfftw_destroy_plan(planTB)
-call dfftw_destroy_plan(planTF2)
-call dfftw_destroy_plan(planTB2)
+call fftw_destroy_plan(planTF)
+call fftw_destroy_plan(planTB)
+call fftw_destroy_plan(planTF2)
+call fftw_destroy_plan(planTB2)
 
 print*, "Pulse generation complete."
 end subroutine
