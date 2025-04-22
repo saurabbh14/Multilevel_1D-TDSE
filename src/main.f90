@@ -65,6 +65,7 @@ module input_vars
 
 ! electronic states
  integer:: Nstates
+ character(200):: Elec_pot_kind
 
 ! vibrational states
  integer:: guess_vstates
@@ -231,13 +232,14 @@ implicit none
  namelist /grid/NR
  namelist /nucl_masses/m1,m2
  namelist /time_grid/dt,Nt
- namelist /elec_states/Nstates
+ namelist /elec_states/Nstates, Elec_pot_kind
  namelist /vib_states/guess_vstates
  namelist /ini_guess_wf/Ri, kappa
  namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
          & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2, &
          & rise_time1, rise_time2
- namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix, output_data_dir
+ namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix
+ namelist /output_files/output_data_dir
  namelist /trans_dip_off/total_trans_off, trans_off
  namelist /absorber_choice/absorber
  namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
@@ -255,6 +257,7 @@ implicit none
  print*, "Nt =", Nt, "steps"
  read(input_tk,nml=elec_states)
  print*, "No. of electronic states:", Nstates
+ print*, "Electonic potential given as:", trim(Elec_pot_kind)
  read(input_tk,nml=vib_states)
  print*, "No. of maximum considered vibrational states:", guess_vstates
  read(input_tk,nml=ini_guess_wf)
@@ -283,6 +286,7 @@ implicit none
  print*, "Rise time:", rise_time2, "fs"
  read(input_tk,nml=input_files)
  
+ read(input_tk,nml=output_files) 
  write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
  print*, "creating output directory ", trim(mk_out_dir)
  call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
@@ -412,29 +416,48 @@ end subroutine
 !------------------------------------------------------------------------------
 subroutine pot_read
 use global_vars, only:R, NR, adb, adb_pot, &
-        & input_data_dir, output_data_dir, dp
+        & input_data_dir, output_data_dir, &
+        & Elec_pot_kind, dp
 use data_au
  implicit none
  character(2000):: filepath
  integer:: I, pot_tk, pot_out_tk
+ real(dp):: morse_potential
  real(dp):: dummy
- write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
- print*, "Potential surfaces in path:", trim(filepath)
- open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
- do I = 1, NR
-   read(pot_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
-       ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
- end do
- close(pot_tk)
 
- write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(adb_pot)),&
-       & "_read.out"  
- open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
- do I = 1, NR
-   write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
-       ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
- end do
- close(pot_out_tk)
+ select case(Elec_pot_kind)
+ case ("on_grid")
+    write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
+    print*, "Potential surfaces in path:", trim(filepath)
+    open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
+    do I = 1, NR
+      read(pot_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+          ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
+    end do
+    close(pot_tk)
+    write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(adb_pot)),&
+          & "_read.out"  
+    open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
+    do I = 1, NR
+      write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+          ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
+    end do
+    close(pot_out_tk)
+ 
+ ! Morse potential as the ground state
+ case("Morse")
+    do I =1, NR
+      adb(I,1) = morse_potential(0.17_dp,1.85_dp,0.743_dp/au2a,R(I))
+    enddo
+   
+    write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), "Morse_pot_read.out"  
+    open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
+    do I = 1, NR
+      write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+          ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
+    end do
+    close(pot_out_tk)
+ end select
 
 end subroutine
 
@@ -526,3 +549,14 @@ use global_vars, only:R, NR, mu_all, trans_dip_prefix, Nstates, &
  endif
 
 end subroutine
+
+!------------------------------------------------
+function morse_potential(de,a,re,r) result(pot)
+use global_vars, only: dp
+implicit none
+real(dp), intent(in):: de, a, re, r
+real(dp) :: pot
+
+pot = de * (1._dp - exp(-a * (r-re)))**2
+
+end function
