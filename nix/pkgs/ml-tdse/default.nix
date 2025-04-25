@@ -30,6 +30,16 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.getDev fftw)
   ];
 
+  
+  # Add a postInstall phase to ensure module files are copied
+  postInstall = ''
+    # Create include directory if it doesn't exist
+    mkdir -p $out/include/ML-TDSE
+    
+    # Copy all mod files to the include directory
+    find . -name "*.mod" -exec cp {} $out/include/ML-TDSE/ \;
+  '';
+
   disableHardening = "all";
 
   meta.mainProgram = "ML-TDSE";

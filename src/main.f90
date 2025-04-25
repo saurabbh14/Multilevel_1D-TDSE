@@ -1,149 +1,3 @@
-module CommandLineModule
-! This module handles the command line arguments for the program.
-  implicit none
-
-  type :: CommandLine
-    character(2000) :: command_line
-    character(2000) :: input
-  contains
-    procedure :: read => read_command_line
-    procedure :: parse => parse_command_line
-  end type CommandLine
-
-contains
-
-  subroutine read_command_line(this)
-    class(CommandLine), intent(inout) :: this
-    integer :: io
-
-    this%command_line = ""
-    call get_command_argument(1, this%command_line, status=io)
-    if (io == 0) then
-      this%input = trim(this%command_line)
-    else
-      write(*, *) io, "Error getting command line."
-    end if
-  end subroutine read_command_line
-
-  subroutine parse_command_line(this)
-    class(CommandLine), intent(inout) :: this
-    ! Add parsing logic here if needed
-    write(*, *) "Parsing command line: ", trim(this%command_line)
-  end subroutine parse_command_line
-
-end module CommandLineModule
-
-module VarPrecision
-! This module defines the precision and data types used in the program.
-    use iso_fortran_env, only:  int8, int16, int32, int64, real32, real64, &
-                                input_unit, output_unit, error_unit
-    implicit none
-    integer, parameter :: sp        = real32
-    integer, parameter :: dp        = real64
-    integer, parameter :: idp        = int64
-    integer, parameter :: isp       = int32
-    integer, parameter :: stdin     = input_unit
-    integer, parameter :: stdout    = output_unit
-    integer, parameter :: stderr    = error_unit
-end module VarPrecision
-
-module input_vars
- use CommandLineModule
- use VarPrecision, only: dp, idp
- use, intrinsic :: iso_c_binding
-! R-grid
- integer(C_INT):: NR 
-
-! electronic states
- integer:: Nstates
- character(200):: Elec_pot_kind
-
-! vibrational states
- integer:: guess_vstates
- integer, allocatable:: Vstates(:)
- 
-! time grid 
- integer:: Nt
-
-! masses
- real(dp):: m1, m2
-
-! guess initial wf
- real(dp):: RI, kappa
-
-! initial TDSE state
- integer:: N_ini, v_ini
- integer, allocatable:: v_dist_ini(:)
- real(dp):: temperature, kappa_tdse, RI_tdse ! for Boltzmann distribution
- character(2000):: initial_distribution  
-
-! laser parameters
- character(150):: envelope_shape_laser1, envelope_shape_laser2
- real(dp):: tp1, fwhm, t_mid1, rise_time1
- real(dp):: tp2, t_mid2, rise_time2
- real(dp):: e01, e02, phi1, phi2
- real(dp):: lambda1, lambda2
-
-! input files
- character(2000):: input_data_dir
- character(2000):: adb_pot, trans_dip_prefix
- character(2000):: output_data_dir
-
-! transitions switched off
- integer:: total_trans_off
- character(2000):: trans_off
-
-! Absorber choice
- character(5):: absorber
-
-! FFTW parallelization
- character(10):: prop_par_FFTW
- character(10):: ITP_par_FFTW
-
-end module input_vars
-
-module global_vars
- use input_vars
- real(dp):: dR
- real(dp), allocatable:: R(:)
- real(dp), allocatable:: en(:)
- real(dp), allocatable:: PR(:)
- real(dp), allocatable:: Pot(:,:), chi0(:,:,:)
- real(dp), allocatable, dimension(:,:,:):: mu_all
- real(dp), allocatable, dimension(:,:):: adb
- real(dp):: kap, lam
- real(dp):: dt
- real(dp):: dpr 
- real(dp):: omega1, omega2
- real(dp):: mn, mn1, mn2 !all relevent mass veriables
-end module
-
-module data_au
- use VarPrecision, only: dp
- real(dp),parameter:: au2a=0.52917706d0  ! length in a.u. to Angstrom
- real(dp),parameter:: cm2au=4.5554927d-6 ! energy in wavenumbers to a.u.
- real(dp),parameter:: au2fs=0.024        ! time in a.u. to femtoseconds
- real(dp),parameter:: j2eV = 6.242D18    ! transforms energy in J to eV
- real(dp),parameter:: au2eV=27.2116d0    ! energy in a.u. to eV
- real(dp),parameter:: eV2nm=1239.84      ! energy from eV to wavelength(nm)
- real(dp),parameter:: kB = 3.167d-6      ! Boltzmann constant hartree/K
- real(dp),parameter:: i2au=2.0997496D-9
- real(dp),parameter:: e02au=5.142206707e11
- real(dp),parameter:: pi=3.141592653589793d0       ! that's just pi
- real(dp),parameter:: mass=1836.15d0    ! reduced mass of deuterium
- real(dp),parameter:: me =1.d0          ! mass of the electron
- real(dp):: m_eff, m_red                ! effecitve mass of el. and nucl.
- real(dp),parameter:: c_speed =137.03604 ! speed of light in a.u.
- complex(dp),parameter:: im=(0.d0,1.d0) 
-end module
-
-module pot_param
- use data_au
- real(dp):: R0     ! Grid-Parameter, start..
- real(dp)::Rend   !..and end
- real(dp),parameter:: cpmR=3.2d0*2*2 !*2 !absorber position from the end of R-grid
-end module pot_param
-
 module FFTW3
   use, intrinsic :: iso_c_binding
   implicit none
@@ -160,10 +14,14 @@ end module
 program TDSE_main
 
  use CommandLineModule
+ use ReadInputFile
+ use PrintInputVars
  use global_vars
  use data_au
  implicit none
  type(CommandLine) :: cmd_line
+ type(InputFilePath) :: input_path
+
  integer:: I, J, I_Emax
  integer :: scount,  & ! Starting "time"
            ecount ! Ending "time"
@@ -180,8 +38,9 @@ program TDSE_main
   print*, "reading input:"
   print*, "General Inputs from ", trim(cmd_line%input)
 !  call execute_command_line("pwd")
- 
-  call read_input(cmd_line%input)
+  call input_path%read(cmd_line%input)
+  call initializer
+  call print_input_vars()
   call p_grid
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
   chi0 = 0.d0
@@ -213,7 +72,8 @@ end program
 ! _______________ Subroutines __________________________________________________
 
 
-subroutine read_input(input_path)
+
+subroutine initializer
 
 use global_vars
 use pot_param
@@ -237,48 +97,7 @@ implicit none
  namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
  namelist /parallelization/prop_par_FFTW,ITP_par_FFTW
 
- open(newunit=input_tk, file=input_path, status='old')
- read(input_tk, nml=grid)
- print*, "NR =", NR
- read(input_tk, nml=nucl_masses)
- print*, "masses:"
- print*, "m1 =", m1, "m2 =", m2
- read(input_tk,nml=time_grid)
- print*, "time grid:"
- print*, "dt =", dt, "fs"
- print*, "Nt =", Nt, "steps"
- read(input_tk,nml=elec_states)
- print*, "No. of electronic states:", Nstates
- print*, "Electonic potential given as:", trim(Elec_pot_kind)
- read(input_tk,nml=vib_states)
- print*, "No. of maximum considered vibrational states:", guess_vstates
- read(input_tk,nml=ini_guess_wf)
- print*, "Guess wavefunction:" 
- print*, "Initial position (RI):", RI
- print*, "Initial width (kappa):", kappa
- read(input_tk,nml=laser_param)
- print*, "Laser parameters:"
- print*, "Laser #1:"
- print*, "Envelope shape:", trim(envelope_shape_laser1)
- print*, "Lambda:", lambda1, "nm"
- print*, "Electric field strength:", E01, "a.u."
- print*, "Pulse envelope: Cos**2"
- print*, "Pulse width (tp):", tp1, "fs"
- print*, "Pulse midpoint:", t_mid1, "fs"
- print*, "phi1:", phi1, "pi"
- print*, "Rise time:", rise_time1, "fs"
- print*, "Laser #2:"
- print*, "Envelope shape:", trim(envelope_shape_laser2)
- print*, "Lambda:", lambda2, "nm"
- print*, "Electric field strength:", E02, "a.u."
- print*, "Pulse envelope: Cos**2"
- print*, "Pulse width (tp):", tp2, "fs"
- print*, "Pulse midpoint:", t_mid2, "fs"
- print*, "phi1:", phi2, "pi"
- print*, "Rise time:", rise_time2, "fs"
- read(input_tk,nml=input_files)
  
- read(input_tk,nml=output_files) 
  write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
  print*, "creating output directory ", trim(mk_out_dir)
  call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
@@ -289,26 +108,7 @@ implicit none
 
  call pot_read
 
- read(input_tk,nml=trans_dip_off)
- print*, "Total trans dipole switched off:", total_trans_off
  call trans_dipole_read
-
- read(input_tk,nml=absorber_choice)
- print*, "Absorber function: ", absorber
-
- read(input_tk,nml=ini_state)
- print*, "TDSE Initial State:"
- print*, "Mode:", trim(initial_distribution)
- print*, "electronic state(s)", (N_ini-1)
- print*, "vibrational state(s)", (v_ini-1)
- print*, "Gaussian Distribution TDSE:" 
- print*, "centered at RI: ", RI_tdse
- print*, "standard deviation: ", kappa_tdse
-
- read(input_tk,nml=parallelization)
- print*, "FFTW Parallelization:"
- print*, "TDSE Propagation FFTW: ", trim(prop_par_FFTW)
- print*, "ITP FFTW: ", trim(ITP_par_FFTW)
 
 !  R0=0.1/au2a
 !  Rend=15.d0/au2a
@@ -350,31 +150,6 @@ implicit none
   omega2=(1._dp / (lambda2 * 1.e-7_dp))* cm2au
   phi1=phi1*pi
   phi2=phi2*pi
-  print*,'_________________________'
-  print*
-  print*,'Final Parameters'
-  print*,'_________________________'
-  print*
-  print*,'dt = ', SNGL(dt), 'a.u.'
-  print*,'dR = ', SNGL(dR), 'a.u.'
-  print*,'dPR = ', SNGL(dpR), 'a.u.'
-  print*,'RI=', sngl(RI), 'a.u.'
-  print*,'R0=', sngl(R0), 'a.u.', 'Rend=',sngl(Rend), 'a.u.'
-  print*,'Wavelength 1 =', sngl(lambda1), 'nm'
-  print*,'Phase 1 =', sngl(phi1)
-  print*,'Field strength =', sngl(e01), 'a.u.', sngl(e01*e02au), 'V/m'
-  print*,'Intensity =', sngl(e01**2*3.509e16_dp), 'W/cm2'
-  print*,'Wavelength 2 =', sngl(lambda2), 'nm'
-  print*,'Phase 2 =', sngl(phi2)
-  print*,'Field strength =', sngl(e02), 'a.u.', sngl(e02*e02au), 'V/m'
-  print*,'Intensity =', sngl(e02**2*3.509e16_dp), 'W/cm2'
-  print*,'Wave duration =', sngl(tp1*au2fs), 'fs'
-  print*
-  print*, 'kap =', kap
-  print*, 'lam =', lam
-  print*
-  print*,'__________________________'
-  print*   
                  
  end subroutine
  

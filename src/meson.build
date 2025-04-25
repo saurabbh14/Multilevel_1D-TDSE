@@ -8,7 +8,11 @@ fftw3_omp = declare_dependency(
 )
 
 executable('ML-TDSE',
-           files('main.f90',
+           files('commandlinemodule.f90',
+           'variablesmodule.f90',
+           'readinputmodule.f90',
+           'printinput.f90',
+           'main.f90',
            'nuclear_wv.f90',
            'propagation.f90',
            'pulse.f90'),
