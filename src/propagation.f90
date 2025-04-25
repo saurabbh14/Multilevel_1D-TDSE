@@ -136,7 +136,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  real(dp) c, sp, deR 
  real(dp):: normpn(Nstates), spec(NR,Nstates)
  real(dp) E(Nt), E1, norm(Nstates), E21, E22
- real(dp):: norm_outR(Nstates), norm_outR1(Nstates), norm_SE_outR1(Nstates)
+ real(dp):: norm_outR(Nstates), norm_outR1(Nstates), norm_SE_outR(Nstates)
  real(dp):: norm_diss(Nstates), norm_bound(Nstates)
  real(dp) A(Nt)
  real(dp) evR(Nstates), epr(Nstates),momt(Nstates), tot_momt
@@ -499,7 +499,11 @@ timeloop: do K = 1, Nt
      psi_outR1(:,J) = psi_ges(:,J) * (1._dp-abs_func(:))
      psi_ges(:,J) = psi_ges(:,J) * abs_func(:) ! psi_ges = psi_nondiss
    enddo
-   write(psi_outR_norm_1d_tk,*) time*au2fs, norm_outR(:)
+   call integ(psi_outR, norm_outR)
+   do J = 1, Nstates
+     norm_SE_outR(J) = sum(psi_outR_inc(:,J))*dR
+   enddo
+   write(psi_outR_norm_1d_tk,*) time*au2fs, norm_outR(:), norm_SE_outR(:)
    do J = 1, Nstates
      psi = (0._dp, 0._dp)
      psi(:) = psi_outR1(:,J)
@@ -598,12 +602,12 @@ end do timeloop
   write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra_normalized.out"
   open(newunit=momt_spectra_tk,file=filepath,status='unknown')
   do I=NR/2 +1,NR
-    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2)
+    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2), sum(abs(psi_outR_inc(I,:)))
     write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
               & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
   enddo
   do I=1,NR/2
-    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2)
+    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2), sum(abs(psi_outR_inc(I,:)))
     write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
               & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
     write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:))**2) / pR(I), &
