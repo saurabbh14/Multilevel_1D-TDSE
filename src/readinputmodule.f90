@@ -7,9 +7,8 @@ module ReadInputFile
       procedure :: read => read_input_file
     end type InputFilePath
   contains
-    subroutine read_input_file(this, input_path)
+    subroutine read_input_file(this)
       class(InputFilePath), intent(in) :: this
-      character(2000), intent(in) :: input_path
       integer :: input_tk
       namelist /grid/NR
       namelist /nucl_masses/m1,m2
@@ -27,7 +26,7 @@ module ReadInputFile
       namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
       namelist /parallelization/prop_par_FFTW,ITP_par_FFTW
      
-      open(newunit=input_tk, file=adjustl(trim(input_path)), status='old')
+      open(newunit=input_tk, file=adjustl(trim(this%path)), status='old')
       read(input_tk, nml=grid)
       read(input_tk, nml=nucl_masses)
       read(input_tk,nml=time_grid)

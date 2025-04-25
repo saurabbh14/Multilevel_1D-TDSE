@@ -38,7 +38,8 @@ program TDSE_main
   print*, "reading input:"
   print*, "General Inputs from ", trim(cmd_line%input)
 !  call execute_command_line("pwd")
-  call input_path%read(cmd_line%input)
+  input_path%path = trim(cmd_line%input)
+  call input_path%read()
   call initializer
   call print_input_vars()
   call p_grid
