@@ -1,6 +1,6 @@
 module blas_interfaces_module
 
-  use var_precision, only: wp=>dp, idp
+  use VarPrecision, only: wp=>dp, idp
 
   implicit none 
 
@@ -86,7 +86,7 @@ module blas_interfaces_module
 end module blas_interfaces_module
 
 subroutine blas_check
-use var_precision, only: wp=>dp
+use VarPrecision, only: wp=>dp
 use blas_interfaces_module, only : zgemv, dgemv, write_matrix
 integer:: I, J
  real(wp):: A(2,3), x(3), y(2)
@@ -105,7 +105,7 @@ integer:: I, J
 end subroutine blas_check
 
 subroutine write_matrix(a)
-use var_precision, only: wp=>dp
+use VarPrecision, only: wp=>dp
    real(wp), dimension(:,:) :: a
    write(*,*)
 

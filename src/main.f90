@@ -1,49 +1,40 @@
-module commandline_args
-character(2000):: command_line
-character(2000):: input
+module CommandLineModule
+! This module handles the command line arguments for the program.
+  implicit none
 
-!call read_command_line
-!call parse_command_line
+  type :: CommandLine
+    character(2000) :: command_line
+    character(2000) :: input
+  contains
+    procedure :: read => read_command_line
+    procedure :: parse => parse_command_line
+  end type CommandLine
+
 contains
 
- subroutine read_command_line
- integer :: exenamelength
- integer :: io, io2
+  subroutine read_command_line(this)
+    class(CommandLine), intent(inout) :: this
+    integer :: io
 
- command_line = ""
-! call get_command(command = command_line,status = io)
- call get_command_argument(1,command_line,status = io)
- if (io==0) then
-   input = trim(command_line)
-! Uncomment if parsing of commandline is needed, i.e. multiple argments in the commandline         
-!  call get_command_argument(0,length = exenamelength,status = io2)
-!  if (io2==0) then
-!    command_line = "&cmd "//adjustl(trim(command_line(exenamelength+1:)))//" /"
-!  else
-!    command_line = "&cmd "//adjustl(trim(command_line))//" /"
-!  end if
-   else
-     write(*,*) io,"Error getting command line."
-   end if
-  end subroutine
+    this%command_line = ""
+    call get_command_argument(1, this%command_line, status=io)
+    if (io == 0) then
+      this%input = trim(this%command_line)
+    else
+      write(*, *) io, "Error getting command line."
+    end if
+  end subroutine read_command_line
 
-! subroutine parse_command_line
-!   character(256) :: msg
-!   namelist /cmd/ input, adb_pot, trans_dip
-!   integer :: io
-!
-!   if (len_trim(command_line)>0) then
-!     msg = ''
-!     read(command_line,nml = cmd,iostat = io,iomsg = msg)
-!     if (io/=0) then
-!       error stop "Error parsing the command line or cmd.conf " // msg
-!     end if
-!   end if
-! end subroutine
+  subroutine parse_command_line(this)
+    class(CommandLine), intent(inout) :: this
+    ! Add parsing logic here if needed
+    write(*, *) "Parsing command line: ", trim(this%command_line)
+  end subroutine parse_command_line
 
-end module commandline_args
+end module CommandLineModule
 
-module var_precision
+module VarPrecision
+! This module defines the precision and data types used in the program.
     use iso_fortran_env, only:  int8, int16, int32, int64, real32, real64, &
                                 input_unit, output_unit, error_unit
     implicit none
@@ -54,11 +45,11 @@ module var_precision
     integer, parameter :: stdin     = input_unit
     integer, parameter :: stdout    = output_unit
     integer, parameter :: stderr    = error_unit
-end module var_precision
+end module VarPrecision
 
 module input_vars
- use commandline_args
- use var_precision, only: dp, idp
+ use CommandLineModule
+ use VarPrecision, only: dp, idp
  use, intrinsic :: iso_c_binding
 ! R-grid
  integer(C_INT):: NR 
@@ -128,7 +119,7 @@ module global_vars
 end module
 
 module data_au
- use var_precision, only: dp
+ use VarPrecision, only: dp
  real(dp),parameter:: au2a=0.52917706d0  ! length in a.u. to Angstrom
  real(dp),parameter:: cm2au=4.5554927d-6 ! energy in wavenumbers to a.u.
  real(dp),parameter:: au2fs=0.024        ! time in a.u. to femtoseconds
@@ -168,10 +159,11 @@ end module
 
 program TDSE_main
 
- use commandline_args
+ use CommandLineModule
  use global_vars
  use data_au
  implicit none
+ type(CommandLine) :: cmd_line
  integer:: I, J, I_Emax
  integer :: scount,  & ! Starting "time"
            ecount ! Ending "time"
@@ -183,13 +175,13 @@ program TDSE_main
   
   call cpu_time(st)
   call system_clock(scount,rate)
-  call read_command_line
+  call cmd_line%read()
   !call parse_command_line
   print*, "reading input:"
-  print*, "General Inputs from ", trim(input)
+  print*, "General Inputs from ", trim(cmd_line%input)
 !  call execute_command_line("pwd")
  
-  call read_input
+  call read_input(cmd_line%input)
   call p_grid
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
   chi0 = 0.d0
@@ -221,13 +213,13 @@ end program
 ! _______________ Subroutines __________________________________________________
 
 
-subroutine read_input
+subroutine read_input(input_path)
 
 use global_vars
 use pot_param
 implicit none
  real:: dummy, dummy2, dummy3, dummy4
- character(200):: mk_out_dir
+ character(200):: mk_out_dir, input_path
  integer:: i, j, input_tk
  namelist /grid/NR
  namelist /nucl_masses/m1,m2
@@ -245,7 +237,7 @@ implicit none
  namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
  namelist /parallelization/prop_par_FFTW,ITP_par_FFTW
 
- open(newunit=input_tk, file=input, status='old')
+ open(newunit=input_tk, file=input_path, status='old')
  read(input_tk, nml=grid)
  print*, "NR =", NR
  read(input_tk, nml=nucl_masses)
