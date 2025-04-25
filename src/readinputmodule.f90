@@ -7,8 +7,9 @@ module ReadInputFile
       procedure :: read => read_input_file
     end type InputFilePath
   contains
-    subroutine read_input_file(input_path)
-      class(InputFilePath), intent(in) :: input_path
+    subroutine read_input_file(this, input_path)
+      class(InputFilePath), intent(in) :: this
+      character(2000), intent(in) :: input_path
       integer :: input_tk
       namelist /grid/NR
       namelist /nucl_masses/m1,m2
