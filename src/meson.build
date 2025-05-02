@@ -7,15 +7,16 @@ fftw3_omp = declare_dependency(
     '-fexternal-blas']
 )
 
-executable('ML-TDSE',
-           files('commandlinemodule.f90',
-           'variablesmodule.f90',
-           'readinputmodule.f90',
-           'printinput.f90',
-           'main.f90',
+subdir('input_modules')
+prog_sources = files('main.f90',
            'nuclear_wv.f90',
            'propagation.f90',
-           'pulse.f90'),
+           'pulse.f90')
+
+incdir = include_directories('input_modules')
+executable('ML-TDSE',
+            mod_sources + prog_sources,
            dependencies: [ blas, lapack, omp, fftw3, fftw3_omp ],
-           install : true
+           install : true,
+           include_directories : incdir
            )

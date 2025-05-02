@@ -9,8 +9,6 @@ module FFTW3
 !  include '/home/me23jok/fftw-3.3.10/include/fftw3.f03' ! draco
 end module
 
-
-
 program TDSE_main
 
  use CommandLineModule
