@@ -19,8 +19,9 @@ module pulse_mod
     real(dp), allocatable :: A21(:), A22(:)
     real(dp), allocatable :: g1(:), g2(:)
     contains
+      procedure :: read => read_pulse_params
       procedure :: initialize => initialize_pulse_param
-      procedure :: print => print_pulse_param
+      procedure :: param_print => print_pulse_param
       procedure :: generate => generate_pulse
       procedure :: write_to_file => write_pulse_to_file
       procedure :: deallocate_env => deallocate_envelope
@@ -30,6 +31,42 @@ module pulse_mod
   end type pulse_param
 
 contains
+  subroutine read_pulse_params(this, input_path)
+    class(pulse_param), intent(inout) :: this
+    character(2000), intent(in) :: input_path
+    ! file tokens
+    integer :: input_tk
+
+    ! Intermediate variables for pulse_param components
+    character(150) :: envelope_shape_laser1, envelope_shape_laser2
+    real(dp) :: lambda1, lambda2, tp1, tp2, t_mid1, t_mid2
+    real(dp) :: E01, E02, phi1, phi2, rise_time1, rise_time2
+
+    namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
+    & lambda1, lambda2, tp1, tp2, t_mid1, t_mid2, E01, E02, & 
+    & phi1, phi2, rise_time1, rise_time2
+
+    open(newunit=input_tk, file=adjustl(trim(input_path)), status='old')
+    read(input_tk,nml=laser_param)
+    close(input_tk)
+
+    ! Assign values to the pulse_param components
+    this%envelope_shape_laser1 = envelope_shape_laser1
+    this%envelope_shape_laser2 = envelope_shape_laser2
+    this%lambda1 = lambda1
+    this%lambda2 = lambda2
+    this%tp1 = tp1
+    this%tp2 = tp2
+    this%t_mid1 = t_mid1
+    this%t_mid2 = t_mid2
+    this%E01 = E01
+    this%E02 = E02
+    this%phi1 = phi1
+    this%phi2 = phi2
+    this%rise_time1 = rise_time1
+    this%rise_time2 = rise_time2
+
+end subroutine read_pulse_params
   ! A subroutine for printing the pulse parameters
   subroutine print_pulse_param(this)
     class(pulse_param), intent(in) :: this
@@ -50,6 +87,18 @@ contains
     print*, "Pulse midpoint:", this%t_mid2, "fs"
     print*, "phi2:", this%phi2, "pi"
     print*, "Rise time:", this%rise_time2, "fs"
+    print*, "------------------------------------------------------"
+    print*, "Final pulse parameters:"
+    print*, "Wavelength 1 =", sngl(this%lambda1), "nm"
+    print*, "Phase 1 =", sngl(this%phi1)
+    print*, "Field strength =", sngl(this%e01), "a.u.", sngl(this%e01*e02au), "V/m"
+    print*, "Intensity =", sngl(this%e01**2*3.509e16_dp), "W/cm2"
+    print*, "Wavelength 2 =", sngl(this%lambda2), "nm"
+    print*, "Phase 2 =", sngl(this%phi2)
+    print*, "Field strength =", sngl(this%e02), "a.u.", sngl(this%e02*e02au), "V/m"
+    print*, "Intensity =", sngl(this%e02**2*3.509e16_dp), "W/cm2"
+    print*, "Wave duration =", sngl(this%tp1*au2fs), "fs"
+    print*, "------------------------------------------------------"
   end subroutine print_pulse_param
 
   ! A subroutine for initializing the pulse parameters
@@ -96,12 +145,6 @@ contains
     ! Calculate amplitudes
     A01 = this%e01 / this%omega1
     A02 = this%e02 / this%omega2
-
-    print*, "test"
-    print*, trim(this%envelope_shape_laser1)
-    print*, trim(this%envelope_shape_laser2)
-    print*, "test"
-    
     ! Calculate the envelope shapes
     ! Envelope shape for laser 1
     select case(trim(this%envelope_shape_laser1))

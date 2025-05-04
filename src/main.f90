@@ -27,13 +27,14 @@ program TDSE_main
 !  call execute_command_line("pwd")
   input_path%path = trim(cmd_line%input)
   call input_path%read()
-  call input_path%read_pulse_params(pulse)
+  call pulse%read(input_path%path)
   print*, "Done reading input"
   print*, "_________________________"
   call initializer
   print*, "Printing input variables"
   call pulse%initialize()
-  call print_input_vars(pulse)
+  call print_input_vars()
+  call pulse%param_print()
   call p_grid
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
   chi0 = 0.d0
