@@ -21,10 +21,8 @@ program TDSE_main
   call cpu_time(st)
   call system_clock(scount,rate)
   call cmd_line%read()
-  !call parse_command_line
   print*, "reading input:"
   print*, "General Inputs from ", trim(cmd_line%input)
-!  call execute_command_line("pwd")
   input_path%path = trim(cmd_line%input)
   call input_path%read()
   call pulse%read(input_path%path)
@@ -185,7 +183,7 @@ use data_au
       adb(I,1) = morse_potential(0.17_dp,1.85_dp,0.743_dp/au2a,R(I))
     enddo
    
-    write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), "Morse_pot_read.out"  
+    write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Morse_pot_read.out"  
     open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
     do I = 1, NR
       write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &

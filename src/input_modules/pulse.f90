@@ -248,26 +248,31 @@ end subroutine read_pulse_params
     class(pulse_param), intent(in) :: this
     integer :: K
     character(150) filename
+    character(2000) mk_out_dir
     real(dp) time     
     ! file tokens
     integer:: envelope1_tk, envelope2_tk
     integer:: field1_tk, field2_tk
     integer:: elec_field_tk, vec_field_tk
+
+    write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), 'pulse_data/'
+    print*, "creating pulse output directory ", trim(mk_out_dir)
+    call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
     
-    write(filename,fmt='(a,a)') adjustl(trim(output_data_dir)), 'envelope1.out'
+    write(filename,fmt='(a,a)') adjustl(trim(mk_out_dir)), 'envelope1.out'
     open(newunit=envelope1_tk, file=filename,status="unknown")
-    write(filename,fmt='(a,a)') adjustl(trim(output_data_dir)), 'envelope2.out'
+    write(filename,fmt='(a,a)') adjustl(trim(mk_out_dir)), 'envelope2.out'
     open(newunit=envelope2_tk, file=filename,status="unknown")
-    write(filename,fmt='(a,a,f4.2,a,i0,a)') adjustl(trim(output_data_dir)), &
+    write(filename,fmt='(a,a,f4.2,a,i0,a)') adjustl(trim(mk_out_dir)), &
     & 'electric_field1_E', this%E01,'_width',Int(this%tp1*au2fs),'.out'
     open(newunit=field1_tk, file=filename,status="unknown")
-    write(filename,fmt='(a,a,f6.4,a,i0,a)') adjustl(trim(output_data_dir)), &
+    write(filename,fmt='(a,a,f6.4,a,i0,a)') adjustl(trim(mk_out_dir)), &
     & 'electric_field2_E', this%E02,'_width',Int(this%tp2*au2fs),'.out'
     open(newunit=field2_tk, file=filename,status="unknown")
-    write(filename,fmt='(a,a,f4.2,a)') adjustl(trim(output_data_dir)), &
+    write(filename,fmt='(a,a,f4.2,a)') adjustl(trim(mk_out_dir)), &
             & 'Total_electric_field_phi', this%phi2/pi,'pi.out'
     open(newunit=elec_field_tk, file=filename,status="unknown")
-    write(filename,fmt='(a,a,f4.2,a)') adjustl(trim(output_data_dir)), &
+    write(filename,fmt='(a,a,f4.2,a)') adjustl(trim(mk_out_dir)), &
             & 'Total_vector_field_phi', this%phi2/pi, 'pi.out'
     open(newunit=vec_field_tk, file=filename,status="unknown")
 
