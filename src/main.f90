@@ -1,25 +1,15 @@
-module FFTW3
-  use, intrinsic :: iso_c_binding
-  implicit none
-  include 'fftw3.f03'
-!  include '/usr/include/fftw3.f03'                                        ! Desktop packet
-!  include '/home/me23jok/ProjectX/FFTW3/include/fftw3.f03' ! ARA cluster
-!  include '/usr/local/include/fftw3.f03'
-!  include '/scratch/Saurabh/FFTW3/install/include/fftw3.f03'  ! nias
-!  include '/home/me23jok/fftw-3.3.10/include/fftw3.f03' ! draco
-end module
-
 program TDSE_main
 
  use CommandLineModule
  use ReadInputFile
  use PrintInputVars
  use global_vars
+ use pulse_mod
  use data_au
  implicit none
  type(CommandLine) :: cmd_line
  type(InputFilePath) :: input_path
-
+ type(pulse_param) :: pulse
  integer:: I, J, I_Emax
  integer :: scount,  & ! Starting "time"
            ecount ! Ending "time"
@@ -27,7 +17,6 @@ program TDSE_main
 
  real(dp) st, ft,timer_elapsed_time
  real(dp) Emax
- real(dp), allocatable:: El(:), Al(:)
   
   call cpu_time(st)
   call system_clock(scount,rate)
@@ -38,13 +27,17 @@ program TDSE_main
 !  call execute_command_line("pwd")
   input_path%path = trim(cmd_line%input)
   call input_path%read()
+  call input_path%read_pulse_params(pulse)
+  print*, "Done reading input"
+  print*, "_________________________"
   call initializer
-  call print_input_vars()
+  print*, "Printing input variables"
+  call pulse%initialize()
+  call print_input_vars(pulse)
   call p_grid
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
   chi0 = 0.d0
- allocate(El(Nt), Al(Nt)) 
-  
+ 
 !  call blas_check
 
 !print*,"test"    
@@ -55,9 +48,11 @@ program TDSE_main
  
   call nuclear_wavefkt
 
-  call pulse(El, Al)
-  call propagation_1D(El, Al)
+  call pulse%generate()
+  call pulse%write_to_file()
+  call propagation_1D(pulse%El, pulse%Al)
   deallocate (adb, mu_all, chi0)
+  call pulse%deallocate_all()
 
  call cpu_time(ft)
  print*,'Run time=', ft-st, 'seconds' 
@@ -80,22 +75,6 @@ implicit none
  real:: dummy, dummy2, dummy3, dummy4
  character(200):: mk_out_dir, input_path
  integer:: i, j, input_tk
- namelist /grid/NR
- namelist /nucl_masses/m1,m2
- namelist /time_grid/dt,Nt
- namelist /elec_states/Nstates, Elec_pot_kind
- namelist /vib_states/guess_vstates
- namelist /ini_guess_wf/Ri, kappa
- namelist /laser_param/envelope_shape_laser1, envelope_shape_laser2, &
-         & lambda1,lambda2,tp1,tp2,t_mid1,t_mid2,E01,E02,phi1,phi2, &
-         & rise_time1, rise_time2
- namelist /input_files/input_data_dir,adb_pot, trans_dip_prefix
- namelist /output_files/output_data_dir
- namelist /trans_dip_off/total_trans_off, trans_off
- namelist /absorber_choice/absorber
- namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
- namelist /parallelization/prop_par_FFTW,ITP_par_FFTW
-
  
  write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
  print*, "creating output directory ", trim(mk_out_dir)
@@ -138,18 +117,7 @@ implicit none
   RI= RI / au2a   
  
   dt = dt / au2fs 
-  tp1 = tp1 / au2fs  
-  tp2 = tp2 / au2fs  
-  t_mid1 = t_mid1 / au2fs   
-  t_mid2 = t_mid2 / au2fs   
-  rise_time1 = rise_time1 / au2fs
-  rise_time2 = rise_time2 / au2fs
-  fwhm = (4._dp * log(2._dp)) / tp1**2 
-  omega1=(1._dp / (lambda1 * 1.e-7_dp)) *cm2au
-  omega2=(1._dp / (lambda2 * 1.e-7_dp))* cm2au
-  phi1=phi1*pi
-  phi2=phi2*pi
-                 
+                
  end subroutine
  
 !...................... Impulsgrid......................

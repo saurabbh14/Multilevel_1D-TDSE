@@ -42,13 +42,6 @@ module InputVars
     real(dp):: temperature, kappa_tdse, RI_tdse ! for Boltzmann distribution
     character(2000):: initial_distribution  
     
-    ! laser parameters
-    character(150):: envelope_shape_laser1, envelope_shape_laser2
-    real(dp):: tp1, fwhm, t_mid1, rise_time1
-    real(dp):: tp2, t_mid2, rise_time2
-    real(dp):: e01, e02, phi1, phi2
-    real(dp):: lambda1, lambda2
-    
     ! input files
     character(2000):: input_data_dir
     character(2000):: adb_pot, trans_dip_prefix
@@ -79,7 +72,6 @@ module global_vars
     real(dp):: kap, lam
     real(dp):: dt
     real(dp):: dpr 
-    real(dp):: omega1, omega2
     real(dp):: mn, mn1, mn2 !all relevent mass veriables
 end module global_vars
     

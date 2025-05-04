@@ -10,8 +10,7 @@ fftw3_omp = declare_dependency(
 subdir('input_modules')
 prog_sources = files('main.f90',
            'nuclear_wv.f90',
-           'propagation.f90',
-           'pulse.f90')
+           'propagation.f90')
 
 incdir = include_directories('input_modules')
 executable('ML-TDSE',

@@ -1,9 +1,12 @@
 module PrintInputVars
     use global_vars
     use pot_param
+    use pulse_mod
+   
     implicit none
     contains
-      subroutine print_input_vars()
+      subroutine print_input_vars(pulse)
+        type(pulse_param), intent(in) :: pulse
         print*, "Number of grid points: NR =", NR
         print*, "Masses: m1 =", m1, "m2 =", m2
         print*, "Time grid: dt =", dt, "fs"
@@ -15,23 +18,7 @@ module PrintInputVars
         print*, "Guess vibrational wavefunction (Gaussian): Initial position (RI) =", RI
         print*, "with initial width (kappa) =", kappa
         print*
-        print*, "Laser parameters:"
-        print*, "Laser #1:"
-        print*, "Envelope shape:", trim(envelope_shape_laser1)
-        print*, "Lambda:", lambda1, "nm"
-        print*, "Electric field strength:", E01, "a.u."
-        print*, "Pulse width (tp):", tp1, "fs"
-        print*, "Pulse midpoint:", t_mid1, "fs"
-        print*, "phi1:", phi1, "pi"
-        print*, "Rise time:", rise_time1, "fs"
-        print*, "Laser #2:"
-        print*, "Envelope shape:", trim(envelope_shape_laser2)
-        print*, "Lambda:", lambda2, "nm"
-        print*, "Electric field strength:", E02, "a.u."
-        print*, "Pulse width (tp):", tp2, "fs"
-        print*, "Pulse midpoint:", t_mid2, "fs"
-        print*, "phi2:", phi2, "pi"
-        print*, "Rise time:", rise_time2, "fs"
+        call pulse%print()
         print*
         print*, "Input and Output Directories:"
         print*, "Input data directory:", trim(input_data_dir)
@@ -62,15 +49,15 @@ module PrintInputVars
         print*, "dPR = ", SNGL(dpR), "a.u."
         print*, "RI=", sngl(RI), "a.u."
         print*, "R0=", sngl(R0), "a.u.", "Rend=",sngl(Rend), "a.u."
-        print*, "Wavelength 1 =", sngl(lambda1), "nm"
-        print*, "Phase 1 =", sngl(phi1)
-        print*, "Field strength =", sngl(e01), "a.u.", sngl(e01*e02au), "V/m"
-        print*, "Intensity =", sngl(e01**2*3.509e16_dp), "W/cm2"
-        print*, "Wavelength 2 =", sngl(lambda2), "nm"
-        print*, "Phase 2 =", sngl(phi2)
-        print*, "Field strength =", sngl(e02), "a.u.", sngl(e02*e02au), "V/m"
-        print*, "Intensity =", sngl(e02**2*3.509e16_dp), "W/cm2"
-        print*, "Wave duration =", sngl(tp1*au2fs), "fs"
+        print*, "Wavelength 1 =", sngl(pulse%lambda1), "nm"
+        print*, "Phase 1 =", sngl(pulse%phi1)
+        print*, "Field strength =", sngl(pulse%e01), "a.u.", sngl(pulse%e01*e02au), "V/m"
+        print*, "Intensity =", sngl(pulse%e01**2*3.509e16_dp), "W/cm2"
+        print*, "Wavelength 2 =", sngl(pulse%lambda2), "nm"
+        print*, "Phase 2 =", sngl(pulse%phi2)
+        print*, "Field strength =", sngl(pulse%e02), "a.u.", sngl(pulse%e02*e02au), "V/m"
+        print*, "Intensity =", sngl(pulse%e02**2*3.509e16_dp), "W/cm2"
+        print*, "Wave duration =", sngl(pulse%tp1*au2fs), "fs"
         print*
         print*, "kap =", kap
         print*, "lam =", lam
