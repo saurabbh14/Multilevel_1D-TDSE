@@ -42,4 +42,5 @@ To run the test calculations, you can use the provided input file for the H2+ mo
 ```
 ./results/bin/ML-TDSE input.ini
 ```  
- 
+
+For more in depth documentation of the package is given in [`DOCUMENTATION.md`](./DOCUMENTATION.md) file and for some usage examples are listed in [`USAGE.md`](./USAGE.md) file. 
