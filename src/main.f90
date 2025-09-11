@@ -69,14 +69,6 @@ program TDSE_main
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))
   chi0 = 0.d0
  
-!  call blas_check
-
-!print*,"test"    
-!  ewf = 0.d0
-!  adb = 0.d0 
-!
-!  call adiabatic_surface(adb, mu_all) 
-
   ! Compute vibrational eigenstates via Imaginary Time Propagation (ITP)
   call nuclear_wavefkt
 
