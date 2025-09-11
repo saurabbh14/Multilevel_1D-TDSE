@@ -1,1 +1,1 @@
-mod_sources = files('pulse.f90')
+pulse_mod_sources = files('pulse.f90')

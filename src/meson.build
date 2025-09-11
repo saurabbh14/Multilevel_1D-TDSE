@@ -19,7 +19,10 @@ incdir = include_directories('IO_modules',
                     'pulse_gen',
                     'fft')
 executable('ML-TDSE',
-            mod_sources + prog_sources,
+            IO_mod_sources
+            + fft_mod_sources
+            + pulse_mod_sources 
+            + prog_sources,
            dependencies: [ blas, lapack, omp, fftw3, fftw3_omp ],
            install : true,
            include_directories : incdir

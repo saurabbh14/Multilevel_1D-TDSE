@@ -1,4 +1,4 @@
-mod_sources = files('commandlinemodule.f90',
+IO_mod_sources = files('commandlinemodule.f90',
            'varprecision.f90',
            'input_vars.f90',
            'global_vars.f90',
