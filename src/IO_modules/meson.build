@@ -4,7 +4,5 @@ mod_sources = files('commandlinemodule.f90',
            'global_vars.f90',
            'data_au.f90',
            'pot_param.f90',
-           'fftw3.f90',
-           'pulse.f90',
            'readinputmodule.f90',
            'printinput.f90')
