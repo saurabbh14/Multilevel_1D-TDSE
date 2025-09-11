@@ -19,7 +19,7 @@ contains
     subroutine initializer_setup(this)
         class(initializer_type), intent(inout) :: this
 
-        call output_dir_check(this%mk_out_dir)
+        call output_dir_check
         call allocate_arrays
         
         ! Read potentials and transition dipoles (or generate synthetic ones)
@@ -32,8 +32,9 @@ contains
   
     end subroutine initializer_setup
 
-    subroutine output_dir_check(mk_out_dir)
+    subroutine output_dir_check
         use global_vars, only: output_data_dir
+        character(2000):: mk_out_dir
         ! Ensure output directory exists (create if missing)
         write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
         print*, "creating output directory ", trim(mk_out_dir)
@@ -278,3 +279,5 @@ contains
     pot = de * (1._dp - exp(-a * (r-re)))**2
 
     end function
+
+end module initializer
