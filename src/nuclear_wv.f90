@@ -1,21 +1,3 @@
-!module FFTW_check
-!
-!use FFTW3
-!
-!implicit none
-!
-!interface
-!function fftw_plan_r2r_1d(plan,NR,pin,pout,*)
-!  import C_INT, C_DOUBLE
-!  type(C_PTR):: plan
-!  integer(C_INT):: NR
-!  real(C_DOUBLE):: pin
-!  real(C_DOUBLE):: pout
-!end function 
-!end interface
-!end module
-
-
 subroutine nuclear_wavefkt
 
  use global_vars
@@ -62,25 +44,10 @@ implicit none
  p = fftw_alloc_real(int(NR, C_SIZE_T)) 
  call c_f_pointer(p,psi,[NR])
 
+ call fftw_initialize_theads
+ call fftw_create_r2r_plans(psi, NR, planF, planB, ITP_par_FFTW)
+ 
 
- void=fftw_init_threads( )
- if (void==0) then
-    write(*,*) 'Error in fftw_init_threads, quitting'
-    stop
- else
-    write(*,*) 'Thread initialization =', void
- endif
-
- select case(ITP_par_FFTW)
- case("parallel")
-   call fftw_plan_with_nthreads(omp_get_max_threads())    
-   planF = fftw_plan_r2r_1d(NR, psi, psi, FFTW_R2HC, FFTW_MEASURE)
-   planB = fftw_plan_r2r_1d(NR, psi, psi, FFTW_HC2R, FFTW_MEASURE)
-
- case default
-   planF = fftw_plan_r2r_1d(NR, psi, psi, FFTW_R2HC, FFTW_MEASURE)
-   planB = fftw_plan_r2r_1d(NR, psi, psi, FFTW_HC2R, FFTW_MEASURE)
- end select
 
   dt2 = dt!*10
   thresh = 1d-18 

@@ -3,16 +3,6 @@
 !>  - program TDSE_main : entry point that reads input, initializes data,
 !>                       computes bound vibrational states, generates pulses
 !>                       and runs the real-time propagation.
-!>  - helper subroutines:
-!>       initializer   : prepare grids, allocate arrays, read potentials/dipoles
-!>       p_grid        : construct momentum grid used by FFT-based propagate
-!>       pot_read      : read or generate electronic potential surfaces
-!>       trans_dipole_read : read transition dipole moments for all pairs
-!>       morse_potential   : utility to create a Morse potential (if requested)
-!>
-!> Notes:
-!>  - For detailed variable definitions, see src/input_modules/variablesmodule.f90
-!>  - Time and unit conversions are done here (e.g. dt conversion to atomic units).
 
 program TDSE_main
 
