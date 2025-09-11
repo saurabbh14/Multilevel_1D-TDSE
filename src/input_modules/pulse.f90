@@ -1,11 +1,12 @@
+!> This module contains the subroutine for generating the laser pulse
+!> and the envelope functions.
 module pulse_mod
   use global_vars, only: dp, Nt, output_data_dir, dt
   use data_au
   use FFTW3
   use omp_lib
   implicit none
-! This module contains the subroutine for generating the laser pulse
-! and the envelope functions.
+
   type :: pulse_param
     character(150) :: envelope_shape_laser1, envelope_shape_laser2
     real(dp) :: tp1, fwhm, t_mid1, rise_time1
@@ -18,19 +19,22 @@ module pulse_mod
     real(dp), allocatable :: E21(:), E22(:)
     real(dp), allocatable :: A21(:), A22(:)
     real(dp), allocatable :: g1(:), g2(:)
-    contains
-      procedure :: read => read_pulse_params
-      procedure :: initialize => initialize_pulse_param
-      procedure :: param_print => print_pulse_param
-      procedure :: generate => generate_pulse
-      procedure :: write_to_file => write_pulse_to_file
-      procedure :: deallocate_env => deallocate_envelope
-      procedure :: deallocate_field => deallocate_field
-      procedure :: deallocate_all => deallocate_all
-      procedure :: spectra => field_spectra
+  
+  contains
+
+    procedure :: read => read_pulse_params
+    procedure :: initialize => initialize_pulse_param
+    procedure :: param_print => print_pulse_param
+    procedure :: generate => generate_pulse
+    procedure :: write_to_file => write_pulse_to_file
+    procedure :: deallocate_env => deallocate_envelope
+    procedure :: deallocate_field => deallocate_field
+    procedure :: deallocate_all => deallocate_all
+    procedure :: spectra => field_spectra
   end type pulse_param
 
 contains
+  
   subroutine read_pulse_params(this, input_path)
     class(pulse_param), intent(inout) :: this
     character(2000), intent(in) :: input_path
