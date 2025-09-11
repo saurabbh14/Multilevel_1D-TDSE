@@ -63,9 +63,6 @@ program TDSE_main
   call print_input_vars()
   call pulse%param_print()
 
-  ! Construct momentum grid used by spectral operators (FFT)
-  call p_grid
-
   ! Allocate arrays for computed vibrational states
   ! Vstates: eigenvalues/energies, chi0: wavefunctions (R, state index, vib index)
   allocate(Vstates(Nstates), chi0(NR,guess_vstates,Nstates))

@@ -11,5 +11,6 @@ module global_vars
     real(dp):: kap, lam                      ! derived coefficients used in dipole / kinetic expressions
     real(dp):: dt                            ! time step 
     real(dp):: dpr                           ! momentum-grid spacing
+    real(dp):: m_eff, m_red                  ! effective and reduced mass
     real(dp):: mn, mn1, mn2                  ! total mass and individual mass ratios
 end module global_vars

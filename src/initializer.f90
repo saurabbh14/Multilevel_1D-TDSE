@@ -2,9 +2,6 @@
 !> Allocations and unit conversions happen here.
 
 module initializer
-
-    use global_vars
-    use pot_param
     implicit none
     private
     
@@ -13,12 +10,14 @@ module initializer
     contains
         procedure :: setup => initializer_setup
     end type initializer_type
+    
+
 
 contains
+
     !> Prepare working directories, grids and arrays, read potentials/dipoles.
     subroutine initializer_setup(this)
         class(initializer_type), intent(inout) :: this
-
         call output_dir_check
         call allocate_arrays
         
@@ -29,6 +28,8 @@ contains
         ! Prepare grids and related parameters
         call r_grid
         call p_grid
+        call mass_setup
+        call into_atomic_units
   
     end subroutine initializer_setup
 
@@ -51,7 +52,8 @@ contains
     end subroutine allocate_arrays
 
     subroutine r_grid
-        use global_vars, only: R, NR, dR, dpR
+        use global_vars, only: R, NR, dR, dpR, dp
+        use data_au, only: pi
         use pot_param, only: R0, Rend
         ! Set derived grid parameters and unit conversions
         R0 = R(1)                  ! leftmost grid point (coordinate space)
@@ -121,48 +123,47 @@ contains
                 & input_data_dir, output_data_dir, &
                 & Elec_pot_kind, dp
         use data_au
+        use pot_param, only: morse_potential
 
         character(2000):: filepath
         integer:: I, pot_tk, pot_out_tk
-        real(dp):: morse_potential
-        real(dp):: dummy
 
         select case(Elec_pot_kind)
             case ("on_grid")
-            ! Compose full path and read potential data file with NR lines.
-            write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
-            print*, "Potential surfaces in path:", trim(filepath)
-            open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
-            do I = 1, NR
-                read(pot_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
-                ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
-            end do
-            close(pot_tk)
+                ! Compose full path and read potential data file with NR lines.
+                write(filepath,'(a,a)') adjustl(trim(input_data_dir)), adjustl(trim(adb_pot))  
+                print*, "Potential surfaces in path:", trim(filepath)
+                open(newunit=pot_tk,file=adjustl(trim(filepath)),status='unknown')
+                do I = 1, NR
+                    read(pot_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+                        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
+                end do
+                close(pot_tk)
 
-            ! Also write a copy into output directory for verification
-            write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(adb_pot)),&
-                    & "_read.out"  
-            open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
-            do I = 1, NR
-                write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
-                ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
-            end do
-            close(pot_out_tk)
+                ! Also write a copy into output directory for verification
+                write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(adb_pot)),&
+                        & "_read.out"  
+                open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
+                do I = 1, NR
+                    write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+                        ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
+                end do
+                close(pot_out_tk)
  
             case("Morse")
-            ! Fill only the ground state with a Morse potential
-            do I =1, NR
-                adb(I,1) = morse_potential(0.17_dp,1.85_dp,0.743_dp/au2a,R(I))
-            enddo
+                ! Fill only the ground state with a Morse potential
+                do I =1, NR
+                    adb(I,1) = morse_potential(0.17_dp,1.85_dp,0.743_dp/au2a,R(I))
+                enddo
    
-            ! Write generated Morse surface to output 
-            write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Morse_pot_read.out"  
-            open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
-            do I = 1, NR
-                write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
-                ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
-            end do
-            close(pot_out_tk)
+                ! Write generated Morse surface to output 
+                write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Morse_pot_read.out"  
+                open(newunit=pot_out_tk,file=adjustl(trim(filepath)),status='unknown')
+                do I = 1, NR
+                    write(pot_out_tk,*) R(I), adb(I,:) !, sngl(adb(I,2)*au2eV), &
+                    ! &sngl(adb(i,3)*au2eV), sngl(adb(i,4)*au2eV), ad
+                end do
+                close(pot_out_tk)
         end select
 
     end subroutine pot_read
@@ -264,20 +265,6 @@ contains
 
     end subroutine trans_dipole_read
 
-    !------------------------------------------------
-    function morse_potential(de,a,re,r) result(pot)
-    ! Simple Morse potential generator used when Elec_pot_kind="Morse".
-    ! Parameters:
-    !  - de : dissociation energy (in same units as returned pot)
-    !  - a  : range parameter controlling width
-    !  - re : equilibrium bond length (in same units as r)
-    !  - r  : coordinate at which to evaluate potential
-    use global_vars, only: dp
-    real(dp), intent(in):: de, a, re, r
-    real(dp) :: pot
 
-    pot = de * (1._dp - exp(-a * (r-re)))**2
-
-    end function
 
 end module initializer

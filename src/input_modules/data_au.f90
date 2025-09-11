@@ -14,7 +14,6 @@ module data_au
     real(dp),parameter:: pi=3.141592653589793d0
     real(dp),parameter:: mass=1836.15d0     ! electron mass unit reference (e.g. proton mass / electron mass)
     real(dp),parameter:: me =1.d0           ! electron mass 1 a.u.
-    real(dp):: m_eff, m_red                  ! placeholders for effective and reduced mass
     real(dp),parameter:: c_speed =137.03604  ! speed of light in a.u. (approx.)
     complex(dp),parameter:: im=(0.d0,1.d0)   ! imaginary unit
 end module
