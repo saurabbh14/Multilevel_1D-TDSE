@@ -1,6 +1,7 @@
 result*
 [Oo]utput_data/
 tools/.venvs/
+.idea/
 *.out
 output
 test_f90

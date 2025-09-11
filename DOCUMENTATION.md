@@ -109,5 +109,3 @@ This document summarizes the repository layout, build & run steps, the main modu
 ## Tests / verification
 - There is a test input for H2+ referenced in the top-level README. Run the executable with that `input.ini` and inspect the produced `output_data_dir` files.
 - Useful debug prints are present across modules (normalization, energies, run-time).
-
----

@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QSplitter, QTextEdit, QSizePolicy
 )
 from PySide6.QtCore import Qt, Slot, Signal, QObject
+from PySide6.QtGui import QTextCursor
 
 import numpy as np
 import matplotlib
@@ -313,9 +314,9 @@ class MainWindow(QMainWindow):
     # --- logging ---
     @Slot(str)
     def append_log(self, txt):
-        self.log.moveCursor(self.log.textCursor().End)
+        self.log.moveCursor(QTextCursor.MoveOperation.End)
         self.log.insertPlainText(txt)
-        self.log.moveCursor(self.log.textCursor().End)
+        self.log.moveCursor(QTextCursor.MoveOperation.End)
 
 
 def main():
