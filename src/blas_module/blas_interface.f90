@@ -79,19 +79,12 @@ module blas_interfaces_module
             integer:: LWORK
             integer:: INFO
         end subroutine dsyev
-    
-        subroutine write_matrix(a)
-            import wp
-            real(wp), dimension(:,:) :: a
-        end subroutine write_matrix
     end interface
  
 contains
 
     subroutine blas_check
         use VarPrecision, only: wp=>dp
-        use blas_interfaces_module, only : zgemv, dgemv, write_matrix
-        integer:: I, J
         real(wp):: A(2,3), x(3), y(2)
  
         A = reshape((/1._wp,0._wp,-1._wp,-3._wp,2._wp,1._wp/),(/2,3/))
@@ -109,6 +102,7 @@ contains
 
     subroutine write_matrix(a)
         use VarPrecision, only: wp=>dp
+        integer :: i, j
         real(wp), dimension(:,:) :: a
         write(*,*)
 
