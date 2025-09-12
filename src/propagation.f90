@@ -1,4 +1,186 @@
+module propagation_mod
+    use varprecision, only: dp
+    implicit none
+    private
+    public :: time_prop !, propagation_1D
 
+    type :: time_prop
+        real(dp), allocatable :: chi0(:,:,:) 
+        real(dp), allocatable :: psi_ges(:,:)
+        real(dp), allocatable :: vib_en(:,:)
+    contains
+        procedure :: initialize
+        procedure :: read_pot_files
+        procedure :: ini_dist_choice
+        procedure :: propagation_1D
+    end type time_prop
+
+contains
+
+    subroutine propagation_1D(this, E, A)
+        class(time_prop), intent(inout) :: this
+        real(dp), intent(in) :: E(:), A(:)
+        call this%initialize()
+        call this%read_pot_files()
+
+    end subroutine propagation_1D
+
+    subroutine initialize(this)
+        use global_vars, only: NR, Nstates, guess_vstates
+        class(time_prop), intent(inout) :: this
+        allocate(this%chi0(NR,guess_vstates,Nstates))
+        allocate(this%psi_ges(NR,Nstates))
+        allocate(this%vib_en(guess_vstates,Nstates))
+    end subroutine initialize
+
+    subroutine read_pot_files(this)
+        use global_vars, only: NR, Nstates, Vstates, output_data_dir
+        use varprecision, only: dp, sp
+        class(time_prop), intent(inout) :: this
+        character(150):: filepath
+        integer:: chi0_tk, vstates_tk, vib_en_tk
+        integer:: i, N, V, i_dummy
+        real(sp):: dummy
+
+        ! Implementation for reading potential files
+        write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
+        open(newunit=vstates_tk,file=filepath,status='unknown')
+
+        this%chi0 = 0._dp
+        this%vib_en = 0._dp
+        do N = 1, Nstates 
+            read(vstates_tk,*) i_dummy, Vstates(N)
+
+            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), &
+                & "BO_Electronic-state-g", int(N-1), "_Evib.out"
+            open(newunit=vib_en_tk,file=filepath,status='unknown')
+            do V = 1, Vstates(N)
+                read(vib_en_tk,*) i_dummy, this%vib_en(V,N)
+            enddo
+            close(vib_en_tk)
+
+            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
+                & int(N-1), "_vibstates.out"
+            open(newunit=chi0_tk,file=filepath,status='unknown')
+            print*, "NR:", NR, "Vstates(N)", Vstates(N)
+
+            do i = 1, NR
+                read(chi0_tk,*) dummy, this%chi0(i,1:Vstates(N),N)
+                print*, i, dummy, this%chi0(i,Vstates(N),N)
+            enddo 
+            close(chi0_tk)
+        enddo
+        close(vstates_tk)
+    end subroutine read_pot_files
+
+    subroutine ini_dist_choice(this)
+        use global_vars, only: NR, Nstates, Vstates, v_ini, N_ini, RI_tdse, kappa_tdse, &
+            initial_distribution, R
+        use data_au, only: au2a, au2eV
+        class(time_prop), intent(inout) :: this
+        integer :: I, N, v
+        real(dp), allocatable, dimension(:) ::vib_dist
+        select case(initial_distribution) 
+            case("single vibrational state")
+                print*, "Initial wavefunction in..."
+                print*, N_ini-1, "electronic state and in", v_ini-1, "vibrational state"
+                do I = 1, NR
+                    this%psi_ges(I,N_ini) = this%chi0(I,v_ini,N_ini) 
+                enddo  
+
+            case("gaussian distribution")
+                print*, "Initial wavefunction in..."
+                print*, N_ini-1, "electronic state and with a Gaussian distribution centered around",&
+                    & RI_tdse/au2a, "a.u. \n with deviation of", kappa_tdse, "."
+                do I = 1, NR
+                    this%psi_ges(I,1)=exp(kappa_tdse*(R(I)-RI_tdse/au2a)**2) 
+                enddo
+
+            ! case ("input dist")
+                !  allocate(v_dist_ini(N_ini))
+                !  v_ini_check = 0
+                !  do N = 1, N_ini
+                !    write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "vib_dist_", int(N-1), ".out"
+                !    open(newunit=vib_dist_tk,file=filepath,status='unknown')
+                !    do 
+                !       read(vib_dist_tk,*,iostat=io)
+                !       if (io /= 0) exit
+                !       v_ini_check = v_ini_check + 1
+                !    enddo
+                !    if (v_ini /= v_ini_check) then
+                !       write(*,'(a,a,i0,a)') "Number of vibstates in 'vib_dist_", N, ".out' not equal to input" 
+                !    endif
+                !  enddo
+                !  allocate(vib_ini(guess_vstates,N_ini), vib_dist(guess_vstates, N_ini))
+                !  do N = 1, N_ini
+                !     do v = 1, v_dist_ini(N)
+                !         read(vib_dist_tk,*) vib_ini(v,N), vib_dist(v,N) 
+                !     enddo
+                !  enddo
+                !  do I = 1, NR
+                !    do v = 1, v_ini
+                !       do N = 1, N_ini
+                !         psi_ges(I,N) = psi_ges(I,N) + vib_dist(vib_ini(v,N),N) * chi0(I,vib_ini(v,N),N)
+                !       enddo
+                !    enddo
+                !  enddo
+
+            case ("Boltzmann dist")
+                do N = 1, N_ini
+                    call Boltzmann_distribution(N, this%vib_en(:,N)/au2eV, vib_dist)
+                    do v = 1, Vstates(N)
+                        do I = 1, NR
+                            this%psi_ges(I,N) = this%psi_ges(I,N) + vib_dist(v) * this%chi0(I,v,N)
+                        enddo
+                    enddo
+                enddo
+                deallocate(vib_dist)
+              
+            case default
+                do I = 1, NR
+                    this%psi_ges(I,1) = this%chi0(I,1,1)
+                enddo
+              
+        end select
+    end subroutine ini_dist_choice
+
+    subroutine Boltzmann_distribution(N, E, Boltzmann_populations)
+        use global_vars, only: temperature, dp, Vstates, guess_vstates
+        use data_au, only: kB
+
+        integer:: N, V
+        real(dp), intent(in):: E(guess_vstates)
+        real(dp), allocatable, intent(out):: Boltzmann_populations(:)
+        real(dp):: total_pop
+
+
+           
+        total_pop = sum(exp(-E(:)/(kB*temperature)))
+        print*, "total populations =", total_pop
+   
+        allocate(Boltzmann_populations(Vstates(N)))
+        do V = 1, Vstates(N)
+            if (V .gt. 1) then
+                Boltzmann_populations(V) = exp(-(E(V)-E(1))/(kB*temperature))!/total_pop
+            else
+                Boltzmann_populations(V)=1._dp
+            endif
+            print*, "state", V-1, "population ratio =", Boltzmann_populations(V)
+        enddo
+   
+        total_pop = sum(Boltzmann_populations(:))
+        print*, "sum of ratios =", total_pop
+        Boltzmann_populations = Boltzmann_populations/total_pop
+        total_pop = sum(Boltzmann_populations(:))
+        print*, "total population =", total_pop
+   
+        do V =1, Vstates(N)
+            print*, "state", V-1, "population probability =", Boltzmann_populations(V)
+        enddo  
+
+    end subroutine Boltzmann_distribution
+
+end module propagation_mod
 
 subroutine propagation_1D(E, A)
 use global_vars
