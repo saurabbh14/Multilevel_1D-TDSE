@@ -111,6 +111,16 @@ contains
         return
     end subroutine  
 
+    subroutine time_grid
+        use global_vars, only: dt, Nt, time
+        integer:: k
+        allocate(time(Nt))
+        do k = 1, Nt
+            time(k) = k * dt
+        end do
+
+    end subroutine time_grid
+
     !------------------------------------------------------------------------------
     !%%%%%% File IO: reading potentials and dipoles %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     !------------------------------------------------------------------------------

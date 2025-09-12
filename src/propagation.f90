@@ -6,13 +6,23 @@ module propagation_mod
 
     type :: time_prop
         real(dp), allocatable :: chi0(:,:,:) 
-        real(dp), allocatable :: psi_ges(:,:)
+        complex(dp), allocatable :: psi_ges(:,:)
         real(dp), allocatable :: vib_en(:,:)
+        integer :: I_cpmR
+        real(dp), allocatable :: abs_func(:)
+
+        integer:: psi_1d_tk, cof_1d_tk
+        integer:: norm_1d_tk, dens_1d_tk, ex_dens_1d_tk, Pdens_1d_tk
+        integer:: avgR_1d_tk, avgpR_1d_tk, norm_pn_1d_tk
+        integer:: field_1d_tk, accumulation_1d_tk, momt_1d_tk
+        integer:: vibpop_1d_tk, psi_outR_norm_1d_tk, psi_outR_Pdens_1d_tk
     contains
         procedure :: initialize
         procedure :: read_pot_files
         procedure :: ini_dist_choice
         procedure :: propagation_1D
+        procedure :: absorber_gen
+        procedure :: open_files_to_write
     end type time_prop
 
 contains
@@ -22,6 +32,9 @@ contains
         real(dp), intent(in) :: E(:), A(:)
         call this%initialize()
         call this%read_pot_files()
+        call this%ini_dist_choice()
+        call this%absorber_gen()
+
 
     end subroutine propagation_1D
 
@@ -144,6 +157,89 @@ contains
         end select
     end subroutine ini_dist_choice
 
+    subroutine absorber_gen(this)
+        use global_vars, only: NR, R, dr, absorber
+        use pot_param, only: cpmR
+        use varprecision, only: dp
+        class(time_prop), intent(inout) :: this
+        real(dp), allocatable:: cof(:), V_abs(:)
+        complex(dp), allocatable:: exp_abs(:)
+        integer:: I
+  
+        allocate(this%abs_func(NR))
+
+        this%I_cpmR = minloc(abs(R(:) - cpmR), 1) - 50
+        print*, "I_cpmR =", this%I_cpmR, ", NR-I_cpmR", NR - this%I_cpmR
+        print*, "R(NR-I_cpmR) =", R(NR - this%I_cpmR)
+
+        select case(absorber)
+            case ("CAP")
+                allocate(V_abs(NR), exp_abs(NR))
+                call Complex_absorber_function(V_abs, exp_abs)
+                this%abs_func = exp_abs
+            case("mask")
+                allocate(cof(NR))
+                call mask_function_ex(cof)
+                this%abs_func = cof
+            case default
+                print*, "No absorber selected. Reflections off the grid boundary may occur!"
+        end select
+    end subroutine absorber_gen
+
+    subroutine open_files_to_write(this)
+        use global_vars, only: output_data_dir
+        class(time_prop), intent(inout) :: this
+        character(150):: filepath
+        ! Inintial wavefunction
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi0_1d.out"
+        open(newunit=this%psi_1d_tk,file=filepath,status='unknown') 
+        ! Absorber function
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "absorber_function.out"
+        open(newunit=this%cof_1d_tk,file=filepath,status='unknown') 
+        
+        ! Propagation outputs
+        ! time dependent norm
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_1d.out"
+        open(newunit=this%norm_1d_tk,file=filepath,status='unknown')
+        ! time dependent ground state density 
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "density_1d.out"
+        open(newunit=this%dens_1d_tk,file=filepath,status='unknown')
+        ! time dependent excited state density
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "ex_density_1d.out"
+        open(newunit=this%ex_dens_1d_tk,file=filepath,status='unknown')
+        ! time dependent momentum density 
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "Pdensity_1d.out"
+        open(newunit=this%Pdens_1d_tk,file=filepath,status='unknown')
+        ! time dependent average position 
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgR_1d.out"
+        open(newunit=this%avgR_1d_tk,file=filepath,status='unknown') 
+        ! time dependent average momentum
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgPR_1d.out"
+        open(newunit=this%avgpR_1d_tk,file=filepath,status='unknown') 
+        ! time dependent norm in localized states
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_pn_1d.out"
+        open(newunit=this%norm_pn_1d_tk,file=filepath,status='unknown')
+        ! time dependent electric field 
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "field_1d.out"
+        open(newunit=this%field_1d_tk,file=filepath,status='unknown')
+        ! time dependent accumulated absorbed density 
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "accumulation_1d.out"
+        open(newunit=this%accumulation_1d_tk,file=filepath,status='unknown') 
+        ! time dependent absorbed momentum
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "momentum_1d.out"
+        open(newunit=this%momt_1d_tk,file=filepath,status='unknown')
+        ! time dependent vibrational populations 
+        write(filepath,'(a,a)') adjustl(trim(output_data_dir)), 'vibpop1D_lambda.out'
+        open(newunit=this%vibpop_1d_tk,file=filepath,status='unknown')
+        ! time dependent norm of absorbed wavepacket
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_norm_1d.out"
+        open(newunit=this%psi_outR_norm_1d_tk,file=filepath,status='unknown')
+        ! time dependent momentum density of absorbed wavepacket 
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_Pdensity_1d.out"
+        open(newunit=this%psi_outR_Pdens_1d_tk,file=filepath,status='unknown') 
+
+    end subroutine open_files_to_write
+
     subroutine Boltzmann_distribution(N, E, Boltzmann_populations)
         use global_vars, only: temperature, dp, Vstates, guess_vstates
         use data_au, only: kB
@@ -179,6 +275,70 @@ contains
         enddo  
 
     end subroutine Boltzmann_distribution
+
+    subroutine complex_absorber_function(v_abs, f)
+        use global_vars, only: NR, dp, dR, dt, R
+        use data_au, only: im
+        use pot_param, only: cpmR
+        
+        integer I
+        real(dp):: a, eps, V_abs(NR), n, R0, p
+        complex(dp):: iV_abs(NR), f(NR)
+    
+        eps = epsilon(a) 
+        print*, "Lower limit of the precision:", eps
+        n = 4 ! power of absorber function
+        R0 = R(NR)- cpmR ! start of the absorber
+        p = 20._dp ! optimal absorption momentum
+        a = -log(eps) *(n+1) *p / (2*(R(NR)-R0)**(n+1))
+        print*, "Absorber prefactor a:", a
+   
+        do I = 1, NR
+            if (R(I) .gt. abs(R0)) then
+                V_abs(I) = a*(R(I)-R0)**n
+            else
+                V_abs(I) = 0._dp
+            endif
+        enddo
+        f(:) = exp(-dt *V_abs(:))
+    end subroutine
+
+    subroutine mask_function_cos(cof)
+        use global_vars, only:NR, R, dR, dp
+        use data_au
+        use pot_param
+   
+        integer :: J
+        real(dp):: cof(NR)
+   
+        do j = 1, NR
+            R(J) = R0 + (j - 1) * dR
+            if(R(J).lt.(Rend - cpmR)) then
+                cof(j) = 1.d0
+            else
+                cof(j) = cos(((R(J) - Rend + cpmR) / -cpmR) * (0.5d0 * pi))
+                cof(j) = cof(j)**2
+            end if
+        end do
+        return
+    end subroutine
+    !------------------------------------------------
+    subroutine mask_function_ex(cof)
+        use global_vars, only:NR, R, dR, dp
+        use data_au
+        use pot_param
+    
+        integer :: J
+        real(dp):: cof(NR),c
+  
+        c=1.00d0
+        do j = 1, NR
+            R(J) = R0 + (j - 1) * dR
+            cof(j)=1.0d0/(1.0d0+exp(c*(R(J)-Rend+cpmR)))
+        end do
+  
+        return
+    end subroutine
 
 end module propagation_mod
 
