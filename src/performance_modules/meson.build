@@ -1,0 +1,1 @@
+performance_mod_sources = files('timeit.f90')

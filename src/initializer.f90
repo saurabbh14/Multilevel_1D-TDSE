@@ -82,10 +82,9 @@ contains
     end subroutine mass_setup
 
     subroutine into_atomic_units
-        use global_vars, only: RI, dt
-        use data_au, only: au2a, au2fs
-        ! Convert initial Gaussian center from Angstrom (or given units) to atomic units
-        RI = RI / au2a
+        use global_vars, only: dt
+        use data_au, only: au2fs
+
         ! Convert time step from femtoseconds to atomic units for propagation
         dt = dt / au2fs
                 
