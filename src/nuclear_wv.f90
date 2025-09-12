@@ -13,9 +13,9 @@ module nuclear_wavefkt
         integer :: guess_Vstates
         real(dp) :: RI, kappa
         character(10) :: ITP_par_FFTW
-        logical :: Files_exist(Nstates)
+        logical, allocatable :: Files_exist(:)
         integer :: vstates_tk
-        integer, dimension(Nstates) :: vib_en_tk, chi0_vib_en_tk, chi0_tk
+        integer, allocatable, dimension(:) :: vib_en_tk, chi0_vib_en_tk, chi0_tk
         integer :: not_converged_tk
     contains
         procedure :: read_guess_wp_params
@@ -48,20 +48,21 @@ contains
         class(nuclear_wavefkt_class), intent(inout) :: this
         ! Convert initial Gaussian center from Angstrom (or given units) to atomic units
         this%RI = this%RI / au2a
+        allocate(this%Files_exist(Nstates))
+        this%Files_exist = .false.
+        allocate(this%vib_en_tk(Nstates), this%chi0_vib_en_tk(Nstates), this%chi0_tk(Nstates))
     end subroutine initialize_wp_params
 
     subroutine open_files(this)
-        use global_vars, only: output_data_dir
-        implicit none
-
+        use global_vars, only: output_data_dir, Nstates
+        class(nuclear_wavefkt_class), intent(inout) :: this
         logical :: Ext
         integer :: j
         character(1000) :: filepath
-        integer :: vstates_tk
 
         write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), &
                 & "Bound-vibstates_in_Nthstates.out"
-        open(newunit=vstates_tk,file=filepath,status='unknown')
+        open(newunit=this%vstates_tk,file=filepath,status='unknown')
 
 
         Nloop: do j = 1, Nstates ! varying the different adiabatic states
@@ -103,8 +104,7 @@ contains
 
     subroutine open_not_converged_files(this, v, j)
         use global_vars, only: output_data_dir
-        implicit none
-
+        class(nuclear_wavefkt_class), intent(inout) :: this
         integer :: j, v
         character(1000) :: filepath
 
@@ -118,10 +118,10 @@ contains
         use global_vars, only: NR, Nstates, dp, dR, R, adb, mu_all, m_red, &
             & Vstates, chi0
         use data_au, only: au2eV, eV2nm
-        
+        class(nuclear_wavefkt_class), intent(inout) :: this
+        integer :: i, j, V, G, K
         integer:: istep  
         type(C_PTR):: planF, planB, p
-        real(dp):: dt2
         real(dp):: dt2
         real(dp):: E1, norm
         real(dp), allocatable:: E(:,:)
@@ -166,8 +166,6 @@ contains
                 print*, "Vibrational states already computed for state ", J-1, ". Skipping ITP."
                 cycle
             endif
-
-            call system_clock(scount1,rate1)
 
             do i = 1, NR ! new vprop
                 vprop(i) = exp(-0.5_dp * dt2 * adb(i,J))
@@ -257,6 +255,7 @@ contains
                     exit
                 endif
             end do Vloop               ! end of vibrational states loop
+            
             print*, "Number of bound vibrational states in the ", int(j-1), &
                 & " electronic state:", Vstates(j)
             write(this%vstates_tk,*) j-1, Vstates(j)
@@ -318,6 +317,8 @@ contains
         return  
       end subroutine integ_r
 
+end module nuclear_wavefkt
+
 !!! COMMENTED Boltzmann Distribution part
 ! total_pop = sum(exp(-E(:)/(kB*temperature)))
 ! print*, "total populations =", total_pop
@@ -355,3 +356,4 @@ contains
 !   !endif
 !   print*
 ! enddo
+

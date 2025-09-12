@@ -13,6 +13,7 @@ program TDSE_main
   use pulse_mod                 ! pulse generation and IO
   use data_au                   ! atomic units / unit conversion constants
   use initializer               ! subroutine to initialize grids, arrays
+  use nuclear_wavefkt          ! compute vibrational eigenstates via ITP
   implicit none
 
   ! Local types/objects
@@ -20,6 +21,7 @@ program TDSE_main
   type(InputFilePath) :: input_path  ! input file path holder
   type(pulse_param) :: pulse         ! pulse object with methods (read, init, gen)
   type(initializer_type) :: init_obj ! initializer object
+  type(nuclear_wavefkt_class) :: nwf_obj ! nuclear wavefunction object
   
   ! Local counters and timers
   integer :: I, J, I_Emax
@@ -59,7 +61,7 @@ program TDSE_main
   chi0 = 0._dp
  
   ! Compute vibrational eigenstates via Imaginary Time Propagation (ITP)
-  call nuclear_wavefkt
+  call nwf_obj%nuclear_wf_calc
 
   ! Generate and store pulse(s) then run time propagation
   call pulse%generate()

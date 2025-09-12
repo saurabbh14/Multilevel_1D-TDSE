@@ -215,8 +215,10 @@ use blas_interfaces_module, only : zgemv, dgemv
   write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
          & int(N-1), "_vibstates.out"
   open(newunit=chi0_tk,file=filepath,status='unknown')
+  print*, "NR:", NR, "Vstates(N)", Vstates(N)
   do I=1,NR
     read(chi0_tk,*) dummy, chi0(I,1:Vstates(N),N)
+    print*, I, dummy, chi0(I,Vstates(N),N)
   enddo 
   close(chi0_tk)
  enddo
