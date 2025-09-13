@@ -28,6 +28,7 @@ contains
         ! Prepare grids and related parameters
         call r_grid
         call p_grid
+        call time_grid
         call mass_setup
         call into_atomic_units
   

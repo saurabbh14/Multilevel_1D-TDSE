@@ -1,5 +1,6 @@
 module propagation_mod
     use varprecision, only: dp
+    use, intrinsic :: iso_c_binding
     implicit none
     private
     public :: time_prop !, propagation_1D
@@ -8,9 +9,12 @@ module propagation_mod
         real(dp), allocatable :: chi0(:,:,:) 
         complex(dp), allocatable :: psi_ges(:,:)
         real(dp), allocatable :: vib_en(:,:)
-        integer :: I_cpmR
-        real(dp), allocatable :: abs_func(:)
+        integer :: i_cpmR
+        complex(dp), allocatable :: abs_func(:)
 
+        complex(dp), allocatable :: psi_outR(:,:)
+        real(dp), allocatable :: psi_outR_inc(:,:)
+        
         integer:: psi_1d_tk, cof_1d_tk
         integer:: norm_1d_tk, dens_1d_tk, ex_dens_1d_tk, Pdens_1d_tk
         integer:: avgR_1d_tk, avgpR_1d_tk, norm_pn_1d_tk
@@ -20,20 +24,39 @@ module propagation_mod
         procedure :: initialize
         procedure :: read_pot_files
         procedure :: ini_dist_choice
+        procedure :: time_evolution
+        procedure :: localized_states_norm, expected_position
+        procedure :: vib_pop_analysis
         procedure :: propagation_1D
         procedure :: absorber_gen
         procedure :: open_files_to_write
+        procedure :: continuum_prop
+        procedure :: post_propagation_analysis => post_prop_analysis
     end type time_prop
+
+    type :: split_operator_type
+        complex(dp), allocatable :: kprop_half(:), kprop_full(:)
+        complex(dp), allocatable :: vprop(:,:)
+        type(C_PTR) :: planF, planB, p
+        complex(C_DOUBLE), pointer:: psi(:)
+    contains
+        procedure :: fft_initialize
+        procedure :: kprop_gen, vprop_gen
+        procedure :: split_operator
+    end type split_operator_type
 
 contains
 
     subroutine propagation_1D(this, E, A)
+        use global_vars, only: Nt
         class(time_prop), intent(inout) :: this
-        real(dp), intent(in) :: E(:), A(:)
+        real(dp), intent(in) :: E(Nt), A(Nt)
         call this%initialize()
         call this%read_pot_files()
         call this%ini_dist_choice()
         call this%absorber_gen()
+        call this%open_files_to_write()
+        call this%time_evolution(E, A)
 
 
     end subroutine propagation_1D
@@ -43,6 +66,7 @@ contains
         class(time_prop), intent(inout) :: this
         allocate(this%chi0(NR,guess_vstates,Nstates))
         allocate(this%psi_ges(NR,Nstates))
+        allocate(this%psi_outR(NR,Nstates), this%psi_outR_inc(NR,Nstates))
         allocate(this%vib_en(guess_vstates,Nstates))
     end subroutine initialize
 
@@ -55,7 +79,7 @@ contains
         integer:: i, N, V, i_dummy
         real(sp):: dummy
 
-        ! Implementation for reading potential files
+        ! implementation for reading potential files
         write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
         open(newunit=vstates_tk,file=filepath,status='unknown')
 
@@ -87,26 +111,27 @@ contains
     end subroutine read_pot_files
 
     subroutine ini_dist_choice(this)
-        use global_vars, only: NR, Nstates, Vstates, v_ini, N_ini, RI_tdse, kappa_tdse, &
+        use global_vars, only: NR, Nstates, Vstates, v_ini, N_ini, Ri_tdse, kappa_tdse, &
             initial_distribution, R
         use data_au, only: au2a, au2eV
         class(time_prop), intent(inout) :: this
-        integer :: I, N, v
+        integer :: i, N, v
+        real(dp):: norm(Nstates)
         real(dp), allocatable, dimension(:) ::vib_dist
         select case(initial_distribution) 
             case("single vibrational state")
-                print*, "Initial wavefunction in..."
+                print*, "initial wavefunction in..."
                 print*, N_ini-1, "electronic state and in", v_ini-1, "vibrational state"
-                do I = 1, NR
-                    this%psi_ges(I,N_ini) = this%chi0(I,v_ini,N_ini) 
+                do i = 1, NR
+                    this%psi_ges(i,N_ini) = this%chi0(i,v_ini,N_ini) 
                 enddo  
 
             case("gaussian distribution")
-                print*, "Initial wavefunction in..."
+                print*, "initial wavefunction in..."
                 print*, N_ini-1, "electronic state and with a Gaussian distribution centered around",&
-                    & RI_tdse/au2a, "a.u. \n with deviation of", kappa_tdse, "."
-                do I = 1, NR
-                    this%psi_ges(I,1)=exp(kappa_tdse*(R(I)-RI_tdse/au2a)**2) 
+                    & Ri_tdse/au2a, "a.u. \n with deviation of", kappa_tdse, "."
+                do i = 1, NR
+                    this%psi_ges(i,1)=exp(kappa_tdse*(R(i)-Ri_tdse/au2a)**2) 
                 enddo
 
             ! case ("input dist")
@@ -130,10 +155,10 @@ contains
                 !         read(vib_dist_tk,*) vib_ini(v,N), vib_dist(v,N) 
                 !     enddo
                 !  enddo
-                !  do I = 1, NR
+                !  do i = 1, NR
                 !    do v = 1, v_ini
                 !       do N = 1, N_ini
-                !         psi_ges(I,N) = psi_ges(I,N) + vib_dist(vib_ini(v,N),N) * chi0(I,vib_ini(v,N),N)
+                !         psi_ges(i,N) = psi_ges(i,N) + vib_dist(vib_ini(v,N),N) * chi0(i,vib_ini(v,N),N)
                 !       enddo
                 !    enddo
                 !  enddo
@@ -142,19 +167,30 @@ contains
                 do N = 1, N_ini
                     call Boltzmann_distribution(N, this%vib_en(:,N)/au2eV, vib_dist)
                     do v = 1, Vstates(N)
-                        do I = 1, NR
-                            this%psi_ges(I,N) = this%psi_ges(I,N) + vib_dist(v) * this%chi0(I,v,N)
+                        do i = 1, NR
+                            this%psi_ges(i,N) = this%psi_ges(i,N) + vib_dist(v) * this%chi0(i,v,N)
                         enddo
                     enddo
                 enddo
                 deallocate(vib_dist)
               
             case default
-                do I = 1, NR
-                    this%psi_ges(I,1) = this%chi0(I,1,1)
+                do i = 1, NR
+                    this%psi_ges(i,1) = this%chi0(i,1,1)
                 enddo
               
         end select
+
+        ! Normalization of the initial wavefunction
+        call integ(this%psi_ges, norm)
+        this%psi_ges(:,1) = this%psi_ges(:,1) / sqrt(norm(1))
+        this%psi_ges(:,2) = this%psi_ges(:,2) / sqrt(norm(2))
+        
+        ! Writing initial wavefunction to file
+        do i = 1, NR
+            write(this%psi_1d_tk,*) R(i), abs(this%psi_ges(i,1))**2
+        end do
+        close(this%psi_1d_tk)
     end subroutine ini_dist_choice
 
     subroutine absorber_gen(this)
@@ -164,13 +200,13 @@ contains
         class(time_prop), intent(inout) :: this
         real(dp), allocatable:: cof(:), V_abs(:)
         complex(dp), allocatable:: exp_abs(:)
-        integer:: I
+        integer:: i
   
         allocate(this%abs_func(NR))
 
-        this%I_cpmR = minloc(abs(R(:) - cpmR), 1) - 50
-        print*, "I_cpmR =", this%I_cpmR, ", NR-I_cpmR", NR - this%I_cpmR
-        print*, "R(NR-I_cpmR) =", R(NR - this%I_cpmR)
+        this%i_cpmR = minloc(abs(R(:) - cpmR), 1) - 50
+        print*, "i_cpmR =", this%i_cpmR, ", NR-i_cpmR", NR - this%i_cpmR
+        print*, "R(NR-i_cpmR) =", R(NR - this%i_cpmR)
 
         select case(absorber)
             case ("CAP")
@@ -184,13 +220,20 @@ contains
             case default
                 print*, "No absorber selected. Reflections off the grid boundary may occur!"
         end select
+
+        ! Writing absorber function to file
+        do i = 1, NR
+            write(this%cof_1d_tk,*) R(i), abs(this%abs_func(i))
+        end do
+        close(this%cof_1d_tk)
+
     end subroutine absorber_gen
 
     subroutine open_files_to_write(this)
         use global_vars, only: output_data_dir
         class(time_prop), intent(inout) :: this
         character(150):: filepath
-        ! Inintial wavefunction
+        ! inintial wavefunction
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi0_1d.out"
         open(newunit=this%psi_1d_tk,file=filepath,status='unknown') 
         ! Absorber function
@@ -240,6 +283,319 @@ contains
 
     end subroutine open_files_to_write
 
+    subroutine fft_initialize(this)
+        use global_vars, only: NR, prop_par_FFTW
+        use data_au, only: im
+        use FFTW3
+        class(split_operator_type), intent(inout) :: this
+
+        ! Creating aligned memory for FFTW
+        this%p = fftw_alloc_real(int(NR, C_SiZE_T)) 
+        call c_f_pointer(this%p,this%psi,[NR])
+
+        call fftw_initialize_threads
+        call fftw_create_c2c_plans(this%psi, NR, this%planF, this%planB, prop_par_FFTW)
+
+    end subroutine fft_initialize
+
+    subroutine kprop_gen(this)
+        use global_vars, only: NR, dpR, dt, m_red, PR
+        use data_au, only: im
+        class(split_operator_type), intent(inout) :: this
+
+        allocate(this%kprop_half(NR), this%kprop_full(NR))
+        
+        this%kprop_half = exp(-im *dt * pR*pR /(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
+        this%kprop_full = exp(-im *dt * pR*pR /(2._dp*m_red))  
+         
+    end subroutine kprop_gen
+
+    subroutine vprop_gen(this)
+        use global_vars, only: NR, Nstates, dt, adb, dp
+        use data_au, only: im
+        class(split_operator_type), intent(inout) :: this
+        integer:: j
+        
+        allocate(this%vprop(NR,Nstates))
+        do j = 1, Nstates           
+            this%vprop(:,j) = exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(i)*E(K)))!+H_ac(i,j))) !         
+        end do
+
+    end subroutine vprop_gen
+
+    subroutine split_operator(this, psi_ges)
+        use global_vars, only: NR, Nstates, m_red, pR
+        use data_au, only: im
+        use FFTW3
+        class(split_operator_type), intent(inout) :: this
+        complex(dp), intent(inout):: psi_ges(NR, Nstates)
+        integer:: j
+
+        do j = 1,Nstates
+            this%psi = (0._dp, 0._dp)
+            this%psi(:) = psi_ges(:,J)  ! Hilfsgroesse
+            call fftw_execute_dft(this%planF, this%psi, this%psi)
+            this%psi = this%psi * this%kprop_half
+            call fftw_execute_dft(this%planB, this%psi, this%psi)
+            this%psi = this%psi / dble(NR)
+            psi_ges(:,J) = this%psi(:)      
+        end do
+    end subroutine split_operator
+
+    subroutine time_evolution(this, E, A)
+        use global_vars, only: NR, Nstates, time, mu_all, Nt, adb, &
+            & dp, dR, guess_vstates, dt, Vstates, R, pR
+        use data_au, only: im, au2fs
+        use blas_interfaces_module, only: zgemv
+        class(time_prop), intent(inout) :: this
+        type(split_operator_type) :: split_operator
+        integer :: i, j, k
+        real(dp), allocatable, dimension(:) :: evr, momt
+        real(dp), allocatable, dimension(:) :: norm, normPn, norm_outR
+        real(dp), allocatable, dimension(:) :: norm_SE_outR
+        real(dp) :: E(Nt), A(Nt) 
+        complex(dp), allocatable :: tout(:,:)
+        complex(dp), allocatable :: psi_Nstates(:), psi_Nstates1(:)
+        real(dp), allocatable :: psi_Nstates_real(:), psi_Nstates_imag(:)
+        real(dp), allocatable :: vib_pop(:,:)
+
+        allocate(psi_Nstates(Nstates), psi_Nstates1(Nstates))
+        allocate(psi_Nstates_real(Nstates), psi_Nstates_imag(Nstates))
+        allocate(evr(Nstates), momt(Nstates))
+        allocate(norm(Nstates), normPn(Nstates), norm_outR(Nstates))
+        allocate(norm_SE_outR(Nstates))
+        allocate(tout(Nstates,Nstates))
+        allocate(vib_pop(guess_vstates,Nstates))
+
+        call split_operator%fft_initialize()
+        call split_operator%kprop_gen()
+        call split_operator%vprop_gen()
+
+        print*
+        print*,'1D propagation...'
+        print*
+    
+        this%psi_outR = (0._dp,0._dp)
+        this%psi_outR_inc = 0._dp
+        
+        timeloop: do k = 1, Nt
+
+            evr = 0._dp
+            momt=0._dp
+          !   norm_out=0._dp
+            norm = 0._dp
+            normPn = 0._dp
+            norm_outR = 0._dp
+
+            ! Kinetic propagation half step
+            call split_operator%split_operator(this%psi_ges)
+            ! Potential propagation full step
+            ! Diagonal potential matrix half step
+            do j = 1, Nstates         
+                this%psi_ges(:,j) = this%psi_ges(:,j) * split_operator%vprop(:,j)
+            end do
+            
+            ! Off-diagonal potential matrix full step i.e interstates coupling
+            !$OMP PARALLEL DO DEFAULT(NONE) FiRSTPRiVATE(tout, psi_Nstates, psi_Nstates1) &
+            !$OMP FiRSTPRiVATE(psi_Nstates_real, psi_Nstates_imag) &
+            !$OMP SHARED(mu_all, E, this, k, Nstates, NR, dt)
+            do i = 1, NR
+                call pulse2(tout, mu_all(:,:,i), E(k))   
+                psi_Nstates(:) = this%psi_ges(i,:)
+                call zgemv('N', int(Nstates), int(Nstates), (1._dp, 0._dp),  &
+                    & tout, size(tout,dim=1), psi_Nstates, 1, (0._dp,0._dp), &
+                    & psi_Nstates1, 1)
+                this%psi_ges(i,:) = psi_Nstates1(:)
+            end do
+            !$OMP END PARALLEL DO
+
+            ! Diagonal potential matrix half step
+            do j = 1, Nstates         
+                this%psi_ges(:,j) = this%psi_ges(:,j) * split_operator%vprop(:,j)
+            end do
+
+            ! Kinetic propagation half step
+            call split_operator%split_operator(this%psi_ges)
+
+            ! On the fly analysis and writing to files
+            ! norm
+            call integ(this%psi_ges, norm)
+            write(this%norm_1d_tk,*) time(k) * au2fs, norm
+            ! localized states norm
+            call this%localized_states_norm(normPn)
+            write(this%norm_pn_1d_tk,*) time(k) * au2fs, normPn
+            ! expected position
+            call this%expected_position(norm, evr)
+            write(this%avgR_1d_tk,*) time(k) * au2fs, evr(1:Nstates)
+            ! vibrational populations (writing only for the ground state)
+            call this%vib_pop_analysis(vib_pop)
+            write(this%vibpop_1d_tk,*) time(k) *au2fs, vib_pop(1:Vstates(1),1)
+
+            ! density
+            ! Coordinate space density 
+            if(mod(k,100).eq.0) then
+                do i = 1, NR, 4   
+                    write(this%dens_1d_tk,*) time(k) *au2fs, R(i), abs(this%psi_ges(i,1))**2
+                    write(this%ex_dens_1d_tk,*) time(k) *au2fs, R(i), abs(this%psi_ges(i,2:Nstates))**2
+                end do 
+                write(this%dens_1d_tk,*)
+                write(this%ex_dens_1d_tk,*)
+            end if
+   
+            ! Momentum space density
+            ! if (mod(k,100) .eq. 0) then
+            !    do i = NR/2 +1, NR, 4   
+            !        write(this%Pdens_1d_tk,*) time(k) *au2fs, pR(i), abs(this%psi_ges_p(i,:))**2
+            !    end do 
+            !    do i = 1, NR/2, 4   
+            !        write(this%Pdens_1d_tk,*) time(k) *au2fs, pR(i), abs(this%psi_ges_p(i,:))**2
+            !    end do 
+            !    write(Pdens_1d_tk,*)
+            ! endif
+
+            !-----------------------------------
+            ! Cotinuum part treatment
+            call this%continuum_prop(split_operator)
+            
+            ! Absorbed density norm
+            call integ(this%psi_outR, norm_outR)
+            do J = 1, Nstates
+                norm_SE_outR(J) = sum(this%psi_outR_inc(:,J))*dR
+            enddo
+            write(this%psi_outR_norm_1d_tk,*) time(k), norm_outR
+
+            ! Absorbed momentum density
+            ! Momentum space density
+            if (mod(K,100) .eq. 0) then
+                do i = NR/2 +1, NR, 4
+                    write(this%psi_outR_Pdens_1d_tk,*) time(k) *au2fs, & 
+                        & pR(i), abs(this%psi_outR(i,:))**2
+                end do
+                do i = 1, NR/2, 4
+                    write(this%psi_outR_Pdens_1d_tk,*) time(k) *au2fs, &
+                        & pR(i), abs(this%psi_outR(i,:))**2
+                end do 
+                write(this%psi_outR_Pdens_1d_tk,*)
+            endif
+        
+        end do timeloop
+
+
+
+
+    end subroutine time_evolution
+
+    subroutine localized_states_norm(this, normPn)
+        use global_vars, only: NR, Nstates
+        class(time_prop), intent(inout) :: this
+        real(dp):: normPn(Nstates), time
+        complex(dp) :: psi_loc(NR,Nstates)
+        normPn = 0._dp
+
+        psi_loc(:,1) = 1._dp/sqrt(2._dp)*(this%psi_ges(:,1) + this%psi_ges(:,2))
+        psi_loc(:,2) = 1._dp/sqrt(2._dp)*(this%psi_ges(:,1) - this%psi_ges(:,2))
+
+        call integ(psi_loc, normPn)
+        
+    end subroutine localized_states_norm
+
+    subroutine expected_position(this, norm, evr)
+        use global_vars, only: NR, Nstates, dR, R
+        class(time_prop), intent(inout) :: this
+        real(dp):: evR(Nstates), norm(Nstates)
+        integer:: N
+
+        evr = 0._dp
+        do N = 1, Nstates
+            evR(N) = sum(abs(this%psi_ges(:,N))**2 * R(:))
+        enddo
+        evR = evR * dR
+
+        do N = 1,Nstates
+            if (norm(N).ge.1.e-8_dp) then
+                evR(N) = evR(N)/norm(N)
+            endif
+        enddo
+
+    end subroutine expected_position
+
+    subroutine vib_pop_analysis(this, vib_pop)
+        use global_vars, only: Vstates, Nstates, guess_vstates, dR
+        class(time_prop), intent(inout) :: this
+        integer:: N, L
+        real(dp) :: vib_pop(guess_vstates,Nstates)
+        complex(dp), allocatable :: psi_chi(:)
+        allocate(psi_chi(guess_vstates))
+        vib_pop = 0._dp
+        do N = 1, Nstates
+            do L=1,vstates(N)
+                psi_chi(L)=0._dp
+                psi_chi(L)=sum(this%chi0(:,L,N) * (this%psi_ges(:,N)))
+                psi_chi(L)=psi_chi(L)*dR
+                vib_pop(L,N)=abs(psi_chi(L))**2
+            enddo
+        enddo
+        deallocate(psi_chi)
+    end subroutine vib_pop_analysis
+
+    subroutine continuum_prop(this, split_operator)
+        use global_vars, only: NR, Nstates, dt, adb
+        use data_au, only: im
+        use FFTW3
+        class(time_prop), intent(inout) :: this
+        type(split_operator_type), intent(in) :: split_operator
+        integer:: i, J
+        complex(dp), allocatable :: psi_outR1(:,:)
+
+        allocate(psi_outR1(NR,Nstates))
+      
+        psi_outR1 = (0._dp, 0._dp)
+        do J = 1, Nstates
+            this%psi_outR(:,J) = this%psi_outR(:,J) * split_operator%kprop_full(:) &
+                & * exp(-im*dt*adb(NR-this%i_cpmR,J))
+            psi_outR1(:,J) = this%psi_ges(:,J) * (1._dp-this%abs_func(:))
+            this%psi_ges(:,J) = this%psi_ges(:,J) * this%abs_func(:) ! psi_ges = psi_nondiss
+        enddo
+
+        do J = 1, Nstates
+            split_operator%psi = (0._dp, 0._dp)
+            split_operator%psi(:) = psi_outR1(:,J)
+            call fftw_execute_dft(split_operator%planF, split_operator%psi, split_operator%psi)
+            split_operator%psi = split_operator%psi/sqrt(dble(NR))
+            psi_outR1(:,J) = split_operator%psi(:)
+        enddo
+        this%psi_outR = this%psi_outR + psi_outR1
+        this%psi_outR_inc = this%psi_outR_inc + abs(psi_outR1)**2
+
+    end subroutine continuum_prop
+
+    subroutine post_prop_analysis(this)
+        class(time_prop), intent(inout) :: this
+        print*
+        print*, "Post-propagation analysis..."
+        print*
+        ! implementation of post-propagation analysis
+    end subroutine post_prop_analysis
+    !------------------------------------------------------------------
+    subroutine integ(psi, norm)
+         
+        use global_vars, only:NR, Nstates, dR, dp
+        implicit none
+        integer i, J
+         
+        real(dp) norm(Nstates)
+        complex(dp) psi(NR,Nstates)
+         
+        norm = 0.d0
+    
+        do J = 1, Nstates
+            norm(J)= sum(abs(psi(:,J))**2)   
+        end do
+    
+        norm = norm * dR
+        return 
+    end subroutine
+
     subroutine Boltzmann_distribution(N, E, Boltzmann_populations)
         use global_vars, only: temperature, dp, Vstates, guess_vstates
         use data_au, only: kB
@@ -281,7 +637,7 @@ contains
         use data_au, only: im
         use pot_param, only: cpmR
         
-        integer I
+        integer i
         real(dp):: a, eps, V_abs(NR), n, R0, p
         complex(dp):: iV_abs(NR), f(NR)
     
@@ -293,11 +649,11 @@ contains
         a = -log(eps) *(n+1) *p / (2*(R(NR)-R0)**(n+1))
         print*, "Absorber prefactor a:", a
    
-        do I = 1, NR
-            if (R(I) .gt. abs(R0)) then
-                V_abs(I) = a*(R(I)-R0)**n
+        do i = 1, NR
+            if (R(i) .gt. abs(R0)) then
+                V_abs(i) = a*(R(i)-R0)**n
             else
-                V_abs(I) = 0._dp
+                V_abs(i) = 0._dp
             endif
         enddo
         f(:) = exp(-dt *V_abs(:))
@@ -340,7 +696,95 @@ contains
         return
     end subroutine
 
+    subroutine pulse2(tout,mu,E)
+        use global_vars, only:dt, Nstates,kap, lam, dp, idp
+        use data_au, only:im
+        use blas_interfaces_module, only : zgemv, dgemv
+   
+        integer:: i, J
+        real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
+        integer info, Lwork
+   
+        complex(dp):: tout, b, z, p, pT
+        dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
+            & z(Nstates,Nstates), tout(Nstates,Nstates), &
+            & p(Nstates,Nstates), uv(Nstates,Nstates), &
+            & pT(Nstates,Nstates)
+        real(dp) work(1000) 
+        character(len=1):: JOBZ
+   
+       
+        !u(1,1) = 0.d0
+        !u(1,2) = -kap*mu(1,2) * E
+        !u(2,1) = -kap*mu(2,1) * E
+        !u(2,2) = 0.d0
+   
+        !Diapole matrix
+        u=0._dp
+        do i=1, Nstates-1
+            do J=i+1, Nstates
+                u(i,J)= -kap*mu(i,J) * E
+                u(J,i)= -kap*mu(i,J) * E
+            enddo
+        enddo
+        !print*, "u"
+        !write( * , * ) ((u(i,j),j=1,Nstates), i=1,Nstates )
+    
+        uv = 0._dp
+        uv = u
+   
+        Lwork=-1
+        JOBZ='V'
+        call dsyev(JOBZ,'U', int(Nstates), uv, int(Nstates), &
+            & d, work, Lwork,info)
+        ! call jacobi(u,Nstates,d)
+        Lwork = min(1000, int(work(1)))
+        
+        !---- Solve eigenproblem.
+        call dsyev('V', 'U', int(Nstates), uv, int(Nstates), &
+            & d, work, Lwork, info)
+   
+        if( info.gt.0 ) then
+            write(*,*)'The algorithm failed to compute eigenvalues.'
+            stop
+        endif
+    
+        p = (0._dp,0._dp)
+        p = uv ! transfering eigenvectors to a complex array
+        !print*,"eigen vector p"
+        !write( * , * ) ( (p(i,j),j=1,Nstates), i=1,Nstates )
+   
+        b= (0._dp,0._dp)
+        do J = 1,Nstates  
+            b(J,J) = exp(-im * dt * d(J)) ! exponentiate diagonal matrix i.e. eigenvalues
+        end do
+        !print*, "b"
+        !write( * , * ) ((b(i,j),j=1,Nstates), i=1,Nstates )
+   
+        ! Calculating e^u = P (e^d) P^(-1)
+        !z = matmul(p,b)
+        call zgemm('N', 'N', int(Nstates), int(Nstates), &
+            & int(Nstates),(1._dp,0._dp), p, size(p,dim=1), &
+            & b, size(b,dim=1), (0._dp,0._dp), z, size(z,dim=1))
+        !print*, "z"
+        !write( * , * ) ((z(i,j),j=1,Nstates), i=1,Nstates )
+   
+        pT = transpose(p)
+        !tout = matmul(z,transpose(p))
+        call zgemm('N', 'N', int(Nstates), int(Nstates), &
+            & int(Nstates),(1._dp,0._dp), z, size(z,dim=1), &
+            & pT, size(pT,dim=1), (0._dp,0._dp), tout, size(tout,dim=1))
+        !print*, "tout"
+        !write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
+   
+   return
+   end subroutine pulse2
+
 end module propagation_mod
+
+
+
+
 
 subroutine propagation_1D(E, A)
 use global_vars
@@ -352,7 +796,7 @@ use blas_interfaces_module, only : zgemv, dgemv
 
  implicit none   
  
- integer I, J, K,I_cpmR, II, io
+ integer i, J, K,i_cpmR, ii, io
  integer L, M, N, void, v
  integer v_ini_check
  type(C_PTR) planF, planB
@@ -360,7 +804,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  real(dp) dummy, dummy2, dummy3
  character(150):: filepath
 
- real(dp) dt2, time
+ real(dp) dt2 !time
  real(dp) c, sp, deR 
  real(dp):: normpn(Nstates), spec(NR,Nstates)
  real(dp) E(Nt), E1, norm(Nstates), E21, E22
@@ -439,14 +883,14 @@ use blas_interfaces_module, only : zgemv, dgemv
  open(newunit=vstates_tk,file=filepath,status='unknown')
  chi0 = 0._dp
  do N = 1, Nstates 
-  read(vstates_tk,*) II, Vstates(N)
+  read(vstates_tk,*) ii, Vstates(N)
   write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
          & int(N-1), "_vibstates.out"
   open(newunit=chi0_tk,file=filepath,status='unknown')
   print*, "NR:", NR, "Vstates(N)", Vstates(N)
-  do I=1,NR
-    read(chi0_tk,*) dummy, chi0(I,1:Vstates(N),N)
-    print*, I, dummy, chi0(I,Vstates(N),N)
+  do i=1,NR
+    read(chi0_tk,*) dummy, chi0(i,1:Vstates(N),N)
+    print*, i, dummy, chi0(i,Vstates(N),N)
   enddo 
   close(chi0_tk)
  enddo
@@ -456,18 +900,18 @@ use blas_interfaces_module, only : zgemv, dgemv
 
  select case(initial_distribution) 
  case("single vibrational state")
-  print*, "Initial wavefunction in..."
+  print*, "initial wavefunction in..."
   print*, N_ini-1, "electronic state and in", v_ini-1, "vibrational state"
-  do I = 1, NR
-    psi_ges(I,N_ini) = chi0(I,v_ini,N_ini) 
+  do i = 1, NR
+    psi_ges(i,N_ini) = chi0(i,v_ini,N_ini) 
   enddo  
 
  case("gaussian distribution")
-  print*, "Initial wavefunction in..."
+  print*, "initial wavefunction in..."
   print*, N_ini-1, "electronic state and with a Gaussian distribution centered around",&
-         & RI_tdse, "a.u. \n with deviation of", kappa_tdse, "."
-  do I = 1, NR
-    psi_ges(I,1)=exp(kappa_tdse*(R(I)-RI_tdse)**2) 
+         & Ri_tdse, "a.u. \n with deviation of", kappa_tdse, "."
+  do i = 1, NR
+    psi_ges(i,1)=exp(kappa_tdse*(R(i)-Ri_tdse)**2) 
   enddo
 
 ! case ("input dist")
@@ -491,10 +935,10 @@ use blas_interfaces_module, only : zgemv, dgemv
 !      read(vib_dist_tk,*) vib_ini(v,N), vib_dist(v,N) 
 !    enddo
 !  enddo
-!  do I = 1, NR
+!  do i = 1, NR
 !   do v = 1, v_ini
 !    do N = 1, N_ini
-!     psi_ges(I,N) = psi_ges(I,N) + vib_dist(vib_ini(v,N),N) * chi0(I,vib_ini(v,N),N)
+!     psi_ges(i,N) = psi_ges(i,N) + vib_dist(vib_ini(v,N),N) * chi0(i,vib_ini(v,N),N)
 !    enddo
 !   enddo
 !  enddo
@@ -503,15 +947,15 @@ use blas_interfaces_module, only : zgemv, dgemv
   do N = 1, N_ini
    call Boltzmann_distribution(N,vib_dist)
    do v = 1, Vstates(N)
-    do I = 1, NR
-      psi_ges(I,N) = psi_ges(I,N) + vib_dist(v) * chi0(I,v,N)
+    do i = 1, NR
+      psi_ges(i,N) = psi_ges(i,N) + vib_dist(v) * chi0(i,v,N)
     enddo
    enddo
   enddo
 
  case default
-  do I = 1, NR
-   psi_ges(I,1) = chi0(I,1,1)
+  do i = 1, NR
+   psi_ges(i,1) = chi0(i,1,1)
   enddo
 
  end select
@@ -519,9 +963,9 @@ use blas_interfaces_module, only : zgemv, dgemv
  ! cpm = 3.d0/ au2a
  ! call cutoff_cos(cpm,cof)
 
- I_cpmR = minloc(abs(R(:)-cpmR),1) - 50
- print*, "I_cpmR =", I_cpmR, ", NR-I_cpmR", NR-I_cpmR
- print*, "R(NR-I_cpmR) =", R(NR-I_cpmR)
+ i_cpmR = minloc(abs(R(:)-cpmR),1) - 50
+ print*, "i_cpmR =", i_cpmR, ", NR-i_cpmR", NR-i_cpmR
+ print*, "R(NR-i_cpmR) =", R(NR-i_cpmR)
 
  select case(absorber)
  case ("CAP")
@@ -533,7 +977,7 @@ use blas_interfaces_module, only : zgemv, dgemv
  end select
  
  call integ(psi_ges, norm) 
- print*,'Initial norm:', norm 
+ print*,'initial norm:', norm 
   
  psi_ges(:,1) = psi_ges(:,1) / sqrt(norm(1))
  
@@ -544,9 +988,9 @@ use blas_interfaces_module, only : zgemv, dgemv
  open(newunit=psi_1d_tk,file=filepath,status='unknown') 
  write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "absorber_function.out"
  open(newunit=cof_1d_tk,file=filepath,status='unknown') 
- do I = 1, NR
-  write(psi_1d_tk,*) R(I), abs(psi_ges(I,1))**2
-  write(cof_1d_tk,*) R(I), abs_func(I)
+ do i = 1, NR
+  write(psi_1d_tk,*) R(i), abs(psi_ges(i,1))**2
+  write(cof_1d_tk,*) R(i), abs_func(i)
  end do
 close(psi_1d_tk)
 close(cof_1d_tk)
@@ -593,9 +1037,9 @@ close(cof_1d_tk)
  norm = 0._dp
  normPn = 0._dp
  norm_outR = 0._dp
- do I = 1, NR
-   kprop(I) = exp(-im *dt * pR(I)*pR(I) /(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
-   kprop1(I) =exp(-im *dt * pR(I)*pR(I) /(2._dp*m_red))
+ do i = 1, NR
+   kprop(i) = exp(-im *dt * pR(i)*pR(i) /(4._dp*m_red))  ! pR**2 /2 * red_mass UND Half time step
+   kprop1(i) =exp(-im *dt * pR(i)*pR(i) /(2._dp*m_red))
  end do 
  
 timeloop: do K = 1, Nt
@@ -621,16 +1065,16 @@ timeloop: do K = 1, Nt
    end do
    
    do j = 1, Nstates   
-!     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
-!              & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
-     psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
+!     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(i,J,J) &
+!              & +0.5d0*R(i))*E(K)+((2-kap)*mr+kap-1)*R(i)*E(K)))!+H_ac(i,j))) !         
+     psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(i)*E(K)))!+H_ac(i,j))) !         
    end do
    
-   !$OMP PARALLEL DO DEFAULT(NONE) FIRSTPRIVATE(tout, psi_Nstates, psi_Nstates1) &
-   !$OMP FIRSTPRIVATE(psi_Nstates_real, psi_Nstates_imag) &
+   !$OMP PARALLEL DO DEFAULT(NONE) FiRSTPRiVATE(tout, psi_Nstates, psi_Nstates1) &
+   !$OMP FiRSTPRiVATE(psi_Nstates_real, psi_Nstates_imag) &
    !$OMP SHARED(mu_all, E, psi_ges, K, Nstates, NR, dt)
    do i = 1, NR
-     call pulse2(tout, mu_all(:,:,I), E(K)) 
+     call pulse2(tout, mu_all(:,:,i), E(K)) 
 !     psi_ges(i,1:Nstates) = matmul(tout(1:Nstates,1:Nstates),psi_ges(i,1:Nstates))  
      psi_Nstates(:) = psi_ges(i,:)
      call zgemv('N', int(Nstates), int(Nstates), (1._dp, 0._dp),  &
@@ -642,9 +1086,9 @@ timeloop: do K = 1, Nt
     
 
    do j = 1, Nstates   
-!     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(I,J,J) &
-!              & +0.5d0*R(I))*E(K)+((2-kap)*mr+kap-1)*R(I)*E(K)))!+H_ac(i,j))) !         
-     psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(I)*E(K)))!+H_ac(i,j))) !         
+!     psi_ges(i,j) = psi_ges(i,j) * exp(-im * dt * (adb(i,j)+kap*(mu_all(i,J,J) &
+!              & +0.5d0*R(i))*E(K)+((2-kap)*mr+kap-1)*R(i)*E(K)))!+H_ac(i,j))) !         
+     psi_ges(:,j) = psi_ges(:,j) * exp(-im * 0.5_dp * dt * (adb(:,j))) !+0.8d0*R(i)*E(K)))!+H_ac(i,j))) !         
    end do
     
    do J = 1,Nstates
@@ -702,9 +1146,9 @@ timeloop: do K = 1, Nt
   
    ! Coordinate space density 
    if(mod(K,100).eq.0) then
-    do I = 1, NR, 4   
-      write(dens_1d_tk,*) time *au2fs, R(I), abs(psi_ges(I,1))**2
-      write(ex_dens_1d_tk,*) time *au2fs, R(I), abs(psi_ges(I,2:Nstates))**2
+    do i = 1, NR, 4   
+      write(dens_1d_tk,*) time *au2fs, R(i), abs(psi_ges(i,1))**2
+      write(ex_dens_1d_tk,*) time *au2fs, R(i), abs(psi_ges(i,2:Nstates))**2
     end do 
     write(dens_1d_tk,*)
     write(ex_dens_1d_tk,*)
@@ -712,11 +1156,11 @@ timeloop: do K = 1, Nt
    
    ! Momentum space density
    if (mod(K,100) .eq. 0) then
-    do I = NR/2 +1, NR, 4   
-      write(Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_ges_p(I,:))**2
+    do i = NR/2 +1, NR, 4   
+      write(Pdens_1d_tk,*) time *au2fs, pR(i), abs(psi_ges_p(i,:))**2
     end do 
-    do I = 1, NR/2, 4   
-      write(Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_ges_p(I,:))**2
+    do i = 1, NR/2, 4   
+      write(Pdens_1d_tk,*) time *au2fs, pR(i), abs(psi_ges_p(i,:))**2
     end do 
     write(Pdens_1d_tk,*)
    endif
@@ -725,7 +1169,7 @@ timeloop: do K = 1, Nt
   
    psi_outR1 = (0._dp, 0._dp)
    do J = 1, Nstates
-     psi_outR(:,J) = psi_outR(:,J) * kprop1(:) * exp(-im*dt*adb(NR-I_cpmR,J))
+     psi_outR(:,J) = psi_outR(:,J) * kprop1(:) * exp(-im*dt*adb(NR-i_cpmR,J))
      psi_outR1(:,J) = psi_ges(:,J) * (1._dp-abs_func(:))
      psi_ges(:,J) = psi_ges(:,J) * abs_func(:) ! psi_ges = psi_nondiss
    enddo
@@ -745,11 +1189,11 @@ timeloop: do K = 1, Nt
    psi_outR_inc = psi_outR_inc + abs(psi_outR1)**2
    ! Momentum space density
    if (mod(K,100) .eq. 0) then
-    do I = NR/2 +1, NR, 4
-      write(psi_outR_Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_outR(I,:))**2
+    do i = NR/2 +1, NR, 4
+      write(psi_outR_Pdens_1d_tk,*) time *au2fs, pR(i), abs(psi_outR(i,:))**2
     end do
-    do I = 1, NR/2, 4
-      write(psi_outR_Pdens_1d_tk,*) time *au2fs, pR(I), abs(psi_outR(I,:))**2
+    do i = 1, NR/2, 4
+      write(psi_outR_Pdens_1d_tk,*) time *au2fs, pR(i), abs(psi_outR(i,:))**2
     end do 
     write(psi_outR_Pdens_1d_tk,*)
    endif
@@ -766,12 +1210,12 @@ end do timeloop
     psi_bound = 0._dp
     do J = 1,vstates(N)
       psi_chi(J) = 0._dp
-      do I = 1, NR
-        psi_chi(J) = psi_chi(J)+ chi0(I,J,N) * (psi_ges(I,N))
+      do i = 1, NR
+        psi_chi(J) = psi_chi(J)+ chi0(i,J,N) * (psi_ges(i,N))
       enddo
       psi_chi(J) = psi_chi(J)*dR
-      do I = 1,NR
-        psi_bound(I,N) = psi_bound(I,N)+psi_chi(J)*chi0(I,J,N)
+      do i = 1,NR
+        psi_bound(i,N) = psi_bound(i,N)+psi_chi(J)*chi0(i,J,N)
       enddo
       print*, 'Vibpop (',J-1,') =', abs(psi_chi(J))**2
       norm_bound(N) = sum(abs(psi_bound(:,N))**2)*dR
@@ -803,19 +1247,19 @@ end do timeloop
     write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "momt_spectra_from_state_g",&
            &  int(N-1), ".out"
     open(newunit=momt_spectra_tk,file=filepath,status='unknown')
-    do I=NR/2 +1,NR
-      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2, abs(psi_outR(I,N))**2
-      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2, &
-              & abs(psi_outR(I,N)/sqrt(norm_diss(N)))**2
+    do i=NR/2 +1,NR
+      write(momt_spectra_un_tk,*) pR(i), abs(psi_diss(i,N))**2, abs(psi_outR(i,N))**2
+      write(momt_spectra_tk,*) pR(i), abs(psi_diss(i,N)/sqrt(norm_diss(N)))**2, &
+              & abs(psi_outR(i,N)/sqrt(norm_diss(N)))**2
     enddo
-    do I=1,NR/2
-      write(momt_spectra_un_tk,*) pR(I), abs(psi_diss(I,N))**2, abs(psi_outR(I,N))**2
-      write(momt_spectra_tk,*) pR(I), abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2, &
-              & abs(psi_outR(I,N)/sqrt(norm_outR(N)))**2
-      write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N))**2 / pR(I),&
-              & m_red*abs(psi_outR(I,N))**2 / pR(I), m_red*abs(psi_outR_inc(I,N))/pR(I) 
-      write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*abs(psi_diss(I,N)/sqrt(norm_diss(N)))**2 / pR(I), &
-              & m_red*abs(psi_outR(I,N)/sqrt(norm_outR(N)))**2 / pR(I) 
+    do i=1,NR/2
+      write(momt_spectra_un_tk,*) pR(i), abs(psi_diss(i,N))**2, abs(psi_outR(i,N))**2
+      write(momt_spectra_tk,*) pR(i), abs(psi_diss(i,N)/sqrt(norm_diss(N)))**2, &
+              & abs(psi_outR(i,N)/sqrt(norm_outR(N)))**2
+      write(KER_spectra_un_tk,*) pR(i)**2/(2*m_red), m_red*abs(psi_diss(i,N))**2 / pR(i),&
+              & m_red*abs(psi_outR(i,N))**2 / pR(i), m_red*abs(psi_outR_inc(i,N))/pR(i) 
+      write(KER_spectra_tk,*) pR(i)**2/(2*m_red), m_red*abs(psi_diss(i,N)/sqrt(norm_diss(N)))**2 / pR(i), &
+              & m_red*abs(psi_outR(i,N)/sqrt(norm_outR(N)))**2 / pR(i) 
     enddo
     close(momt_spectra_un_tk)
     close(KER_spectra_un_tk)
@@ -831,19 +1275,19 @@ end do timeloop
   open(newunit=KER_spectra_tk,file=filepath,status='unknown')
   write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra_normalized.out"
   open(newunit=momt_spectra_tk,file=filepath,status='unknown')
-  do I=NR/2 +1,NR
-    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2), sum(abs(psi_outR_inc(I,:)))
-    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
-              & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
+  do i=NR/2 +1,NR
+    write(momt_spectra_un_tk,*) pR(i), sum(abs(psi_diss(i,:))**2), sum(abs(psi_outR(i,:))**2), sum(abs(psi_outR_inc(i,:)))
+    write(momt_spectra_tk,*) pR(i), sum(abs(psi_diss(i,:)/sqrt(norm_diss(:)))**2), &
+              & sum(abs(psi_outR(i,:)/sqrt(norm_outR(:)))**2)
   enddo
-  do I=1,NR/2
-    write(momt_spectra_un_tk,*) pR(I), sum(abs(psi_diss(I,:))**2), sum(abs(psi_outR(I,:))**2), sum(abs(psi_outR_inc(I,:)))
-    write(momt_spectra_tk,*) pR(I), sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2), &
-              & sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2)
-    write(KER_spectra_un_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:))**2) / pR(I), &
-              & m_red*sum(abs(psi_outR(I,:))**2) / pR(I), m_red*sum(abs(psi_outR_inc(I,:)))/pR(I)
-    write(KER_spectra_tk,*) pR(I)**2/(2*m_red), m_red*sum(abs(psi_diss(I,:)/sqrt(norm_diss(:)))**2) /pR(I), &
-              & m_red*sum(abs(psi_outR(I,:)/sqrt(norm_outR(:)))**2) / pR(I)
+  do i=1,NR/2
+    write(momt_spectra_un_tk,*) pR(i), sum(abs(psi_diss(i,:))**2), sum(abs(psi_outR(i,:))**2), sum(abs(psi_outR_inc(i,:)))
+    write(momt_spectra_tk,*) pR(i), sum(abs(psi_diss(i,:)/sqrt(norm_diss(:)))**2), &
+              & sum(abs(psi_outR(i,:)/sqrt(norm_outR(:)))**2)
+    write(KER_spectra_un_tk,*) pR(i)**2/(2*m_red), m_red*sum(abs(psi_diss(i,:))**2) / pR(i), &
+              & m_red*sum(abs(psi_outR(i,:))**2) / pR(i), m_red*sum(abs(psi_outR_inc(i,:)))/pR(i)
+    write(KER_spectra_tk,*) pR(i)**2/(2*m_red), m_red*sum(abs(psi_diss(i,:)/sqrt(norm_diss(:)))**2) /pR(i), &
+              & m_red*sum(abs(psi_outR(i,:)/sqrt(norm_outR(:)))**2) / pR(i)
   enddo
   close(momt_spectra_un_tk)
   close(KER_spectra_un_tk)
@@ -901,7 +1345,7 @@ end do timeloop
    use data_au, only: im
    use pot_param, only: cpmR
     implicit none
-    integer I
+    integer i
     real(dp):: a, eps, V_abs(NR), n, R0, p
     complex(dp):: iV_abs(NR), f(NR)
     
@@ -913,11 +1357,11 @@ end do timeloop
     a = -log(eps) *(n+1) *p / (2*(R(NR)-R0)**(n+1))
     print*, "Absorber prefactor a:", a
    
-    do I = 1, NR
-     if (R(I) .gt. abs(R0)) then
-       V_abs(I) = a*(R(I)-R0)**n
+    do i = 1, NR
+     if (R(i) .gt. abs(R0)) then
+       V_abs(i) = a*(R(i)-R0)**n
      else
-       V_abs(I) = 0._dp
+       V_abs(i) = 0._dp
      endif
     enddo
     f(:) = exp(-dt *V_abs(:))
@@ -927,7 +1371,7 @@ end do timeloop
          
    use global_vars, only:NR, Nstates, dR, dp
     implicit none
-    integer I, J
+    integer i, J
          
     real(dp) norm(Nstates)
     complex(dp) psi(NR,Nstates)
@@ -981,7 +1425,7 @@ end do timeloop
    
     integer:: i, J
     real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
-    integer Info, Lwork
+    integer info, Lwork
    
     complex(dp):: tout, b, z, p, pT
     dimension:: u(Nstates,Nstates), d(Nstates), b(Nstates,Nstates), &
@@ -1000,10 +1444,10 @@ end do timeloop
    
    !Diapole matrix
    u=0._dp
-   do I=1, Nstates-1
-    do J=I+1, Nstates
-          u(I,J)= -kap*mu(I,J) * E
-          u(J,I)= -kap*mu(I,J) * E
+   do i=1, Nstates-1
+    do J=i+1, Nstates
+          u(i,J)= -kap*mu(i,J) * E
+          u(J,i)= -kap*mu(i,J) * E
     enddo
    enddo
    !print*, "u"

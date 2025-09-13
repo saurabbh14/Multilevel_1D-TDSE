@@ -115,7 +115,7 @@ contains
     end subroutine open_not_converged_files
 
     subroutine ITP(this)
-        use global_vars, only: NR, Nstates, dp, dR, R, adb, mu_all, m_red, &
+        use global_vars, only: NR, Nstates, dp, R, adb, m_red, &
             & Vstates, chi0
         use data_au, only: au2eV, eV2nm
         class(nuclear_wavefkt_class), intent(inout) :: this
@@ -125,8 +125,8 @@ contains
         real(dp):: dt2
         real(dp):: E1, norm
         real(dp), allocatable:: E(:,:)
-        real(dp):: CONS, thresh
-        real(dp):: dummy, R_e, D_e, alpha, Rin
+        real(dp):: thresh
+        real(dp):: Rin
 
       !  double precision, allocatable:: chi0(:,:)
       !  double precision:: total_pop, Boltzmann_populations(guess_Vstates) 
@@ -147,7 +147,7 @@ contains
         p = fftw_alloc_real(int(NR, C_SIZE_T)) 
         call c_f_pointer(p,psi,[NR])
 
-        call fftw_initialize_theads
+        call fftw_initialize_threads
         call fftw_create_r2r_plans(psi, NR, planF, planB, ITP_par_FFTW)
 
         dt2 = dt!*10        ! time step for ITP

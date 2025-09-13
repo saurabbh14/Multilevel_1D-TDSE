@@ -12,7 +12,7 @@ module FFTW3
 
 contains
 
-    subroutine fftw_initialize_theads
+    subroutine fftw_initialize_threads
         integer(C_INT) :: void
         void = fftw_init_threads( )
         if (void == 0) then
@@ -21,7 +21,7 @@ contains
         else
             print*, 'number of threads found =', void
         endif
-    end subroutine fftw_initialize_theads
+    end subroutine fftw_initialize_threads
 
     subroutine fftw_create_r2r_plans(psi, NR, planF, planB, parallel)
         use omp_lib
@@ -40,7 +40,7 @@ contains
         end select
     end subroutine fftw_create_r2r_plans
 
-    subroutine fftw_create_plans(psi, NR, planF, planB, parallel)
+    subroutine fftw_create_c2c_plans(psi, NR, planF, planB, parallel)
         use omp_lib
         use varprecision, only: dp
         complex(dp), intent(inout):: psi(:)
@@ -56,5 +56,5 @@ contains
             planF = fftw_plan_dft_1d(NR, psi, psi, FFTW_FORWARD, FFTW_MEASURE)
             planB = fftw_plan_dft_1d(NR, psi, psi, FFTW_BACKWARD, FFTW_MEASURE)
         end select
-    end subroutine fftw_create_plans
+    end subroutine fftw_create_c2c_plans
 end module

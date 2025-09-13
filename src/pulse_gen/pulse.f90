@@ -216,7 +216,7 @@ contains
         ! file tokens
         integer:: field_spec_tk
 
-        call fftw_initialize_theads
+        call fftw_initialize_threads
     
         allocate(E_dum(Nt))
 
