@@ -19,6 +19,7 @@ import sys
 import re
 import subprocess
 import threading
+import time
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -66,12 +67,14 @@ def set_or_add_key(text, section, key, value):
 class ProcRunner(QObject):
     line = Signal(str)
     finished = Signal(int)
+    progress = Signal()  # Signal to trigger plot update
 
-    def __init__(self, cmd, cwd):
+    def __init__(self, cmd, cwd, output_dir=None):
         super().__init__()
         self.cmd = cmd
         self.cwd = cwd
         self._proc = None
+        self.output_dir = output_dir
 
     def run(self):
         try:
@@ -81,8 +84,31 @@ class ProcRunner(QObject):
             self.line.emit(f"Error: {e}\n")
             self.finished.emit(-1)
             return
-        for ln in self._proc.stdout:
-            self.line.emit(ln)
+        
+        plot_file_created = False
+        last_plot_time = time.time()
+        plot_file_path = None
+        # Determine which file to watch (norm_1d.out for your current setup)
+        if self.output_dir:
+            plot_file_path = Path(self.output_dir) / "norm_1d.out"
+        else:
+            plot_file_path = Path(PROJECT_ROOT) / "norm_1d.out"
+
+        while True:
+            ln = self._proc.stdout.readline()
+            if ln == "" and self._proc.poll() is not None:
+                break
+            if ln:
+                self.line.emit(ln)
+            # Check for plot file creation and emit progress every 2 seconds
+            now = time.time()
+            if not plot_file_created and plot_file_path.exists():
+                plot_file_created = True
+                last_plot_time = now  # trigger immediately
+            if plot_file_created and (now - last_plot_time) >= 2.0:
+                self.progress.emit()
+                last_plot_time = now
+
         rc = self._proc.wait()
         self.finished.emit(rc)
 
@@ -118,7 +144,7 @@ class MainWindow(QMainWindow):
             ("Build (nix build)", self.build_project),
             ("Run", self.run_simulation),
             ("Stop", self.stop_simulation),
-            ("Plot density_1d", self.plot_density),
+            ("Plot norm_1d", self.plot_norm),
         ]:
             b = QPushButton(txt)
             b.clicked.connect(cb)
@@ -255,10 +281,39 @@ class MainWindow(QMainWindow):
         self.save_input()
         cmd = [str(EXEC_PATH), str(self.current_input)]
         self.append_log(f"Starting simulation: {' '.join(cmd)}\n")
-        runner = ProcRunner(cmd, str(PROJECT_ROOT))
+        # Get output_data_dir from input.ini
+        text = self.editor.toPlainText()
+        m = re.search(r"\boutput_data_dir\s*=\s*['\"]?([^'\"]+?)['\"\s\r\n/]*\n", text)
+        outdir = PROJECT_ROOT
+        if m:
+            outdir = (PROJECT_ROOT / m.group(1).strip()).resolve()
+        runner = ProcRunner(cmd, str(PROJECT_ROOT), output_dir=outdir)
         runner.line.connect(self.append_log)
         runner.finished.connect(lambda rc: self.append_log(f"Simulation finished (rc={rc})\n"))
+        runner.progress.connect(self.plot_norm_live)  # Connect progress signal to live plot
         self._start_runner(runner)
+
+    def plot_norm_live(self):
+        """Update plot during simulation run (called on each output line)."""
+        outdir = getattr(self.proc_runner, "output_dir", PROJECT_ROOT)
+        f = outdir / "norm_1d.out"
+        if not f.exists():
+            return  # Don't show error popups during live update
+        try:
+            data = np.loadtxt(f)
+        except Exception:
+            return
+        ax = self.fig.subplots()
+        ax.clear()
+        if data.ndim == 1:
+            ax.plot(data)
+        else:
+            x = data[:, 0]
+            y = data[:, 1] if data.shape[1] > 1 else data[:, 0]
+            ax.plot(x, y)
+        ax.set_title(f.name + " (live)")
+        self.canvas.draw()
+
 
     def stop_simulation(self):
         if self.proc_runner:
@@ -283,13 +338,14 @@ class MainWindow(QMainWindow):
         threading.Thread(target=poll, daemon=True).start()
 
     # --- plotting ---
-    def plot_density(self):
+
+    def plot_norm(self):
         text = self.editor.toPlainText()
         m = re.search(r"\boutput_data_dir\s*=\s*['\"]?([^'\"]+?)['\"\s\r\n/]*\n", text)
         outdir = PROJECT_ROOT
         if m:
             outdir = (PROJECT_ROOT / m.group(1).strip()).resolve()
-        f = outdir / "density_1d.out"
+        f = outdir / "norm_1d.out"
         if not f.exists():
             QMessageBox.information(self, "Not found", f"{f} not found. Ensure simulation produced outputs.")
             self.append_log(f"Plot file not found: {f}\n")

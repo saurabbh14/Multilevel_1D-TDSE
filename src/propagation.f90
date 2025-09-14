@@ -385,7 +385,13 @@ contains
         this%psi_outR_inc = 0._dp
         
         timeloop: do k = 1, Nt
-
+            
+            if (mod(k,1000) .eq. 0 .and. time(k)*au2fs .lt. 100._dp) then
+                print('(a,i0,a,f5.2,a)'), "Progress: time step #", k, ", time:", time(k)*au2fs, " fs"
+            elseif (mod(k,1000) .eq. 0 .and. time(k)*au2fs .ge. 100._dp) then
+                print('(a,i0,a,f6.2,a)'), "Progress: time step #", k, ", time:", time(k)*au2fs, " fs"
+            endif
+            
             evr = 0._dp
             momt=0._dp
           !   norm_out=0._dp

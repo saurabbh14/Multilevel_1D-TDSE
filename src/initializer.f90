@@ -26,11 +26,12 @@ contains
         call trans_dipole_read
 
         ! Prepare grids and related parameters
+        call into_atomic_units
         call r_grid
         call p_grid
         call time_grid
         call mass_setup
-        call into_atomic_units
+
   
     end subroutine initializer_setup
 
