@@ -14,6 +14,7 @@ program TDSE_main
   use data_au                   ! atomic units / unit conversion constants
   use initializer               ! subroutine to initialize grids, arrays
   use nuclear_wavefkt          ! compute vibrational eigenstates via ITP
+  use propagation_mod
   implicit none
 
   ! Local types/objects
@@ -22,6 +23,7 @@ program TDSE_main
   type(pulse_param) :: pulse         ! pulse object with methods (read, init, gen)
   type(initializer_type) :: init_obj ! initializer object
   type(nuclear_wavefkt_class) :: nwf_obj ! nuclear wavefunction object
+  type(time_prop) :: prop
   
   ! Local counters and timers
   integer :: I, J, I_Emax
@@ -66,7 +68,10 @@ program TDSE_main
   ! Generate and store pulse(s) then run time propagation
   call pulse%generate()
   call pulse%write_to_file()
-  call propagation_1D(pulse%El, pulse%Al)
+
+  print*, "Time dependent calcuations"
+
+  call prop%propagation_1D(pulse%El, pulse%Al)
 
   ! Clean up allocated arrays and pulse internals
   deallocate (adb, mu_all, chi0)

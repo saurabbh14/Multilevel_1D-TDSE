@@ -255,8 +255,9 @@ contains
         integer:: field1_tk, field2_tk
         integer:: elec_field_tk, vec_field_tk
 
-        write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), 'pulse_data/'
+        write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), "" ! 'pulse_data/'
         print*, "creating pulse output directory ", trim(mk_out_dir)
+        print*, "test"
         call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
     
         write(filename,fmt='(a,a)') adjustl(trim(mk_out_dir)), 'envelope1.out'
@@ -286,6 +287,8 @@ contains
             write(elec_field_tk,*) time*au2fs, this%El(K)
             write(vec_field_tk,*) time*au2fs, this%Al(K)
         enddo timeloop
+
+        print*, "Done writing field information in the files."
         close(envelope1_tk)
         close(envelope2_tk)
         close(field1_tk)

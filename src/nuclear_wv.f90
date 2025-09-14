@@ -33,6 +33,7 @@ contains
         call this%read_guess_wp_params()
         call this%initialize_wp_params()
         call this%imaginary_time_propagation()
+        print*, "Leaving vibrational state calculations ..."
     end subroutine nuclear_wf_calc  
 
     subroutine read_guess_wp_params(this)
