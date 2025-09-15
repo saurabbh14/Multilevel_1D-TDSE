@@ -38,8 +38,8 @@ module propagation_mod
     type :: split_operator_type
         complex(dp), allocatable :: kprop_half(:), kprop_full(:)
         complex(dp), allocatable :: vprop(:,:)
-        type(C_PTR) :: planF, planB, p
-        complex(C_DOUBLE), pointer:: psi(:)
+        type(C_PTR) :: planF, planB, p_in, p_out
+        complex(C_DOUBLE), pointer:: psi_in(:), psi_out(:)
     contains
         procedure :: fft_initialize
         procedure :: kprop_gen, vprop_gen
@@ -336,13 +336,17 @@ contains
         print*
         print*, "FFTW intialization ..."
         print*
+
         ! Creating aligned memory for FFTW
-        this%p = fftw_alloc_complex(int(NR, C_SiZE_T)) 
-        call c_f_pointer(this%p,this%psi,[NR])
+        this%p_in = fftw_alloc_complex(int(NR, C_SiZE_T)) 
+        call c_f_pointer(this%p_in,this%psi_in,[NR])
+        this%p_out = fftw_alloc_complex(int(NR, C_SiZE_T)) 
+        call c_f_pointer(this%p_out,this%psi_out,[NR])
 
         call fftw_initialize_threads
         print*, "FFTW plan creation ..."
-        call fftw_create_c2c_plans(this%psi, NR, this%planF, this%planB, prop_par_FFTW)
+        call fftw_create_c2c_plans(this%psi_in, this%psi_out, NR, & 
+            & this%planF, this%planB, prop_par_FFTW)
         print*, "Done setting up FFTW."
 
     end subroutine fft_initialize
@@ -381,13 +385,14 @@ contains
         integer:: j
 
         do j = 1, Nstates
-            this%psi = (0._dp, 0._dp)
-            this%psi(:) = psi_ges(:,J)  ! Hilfsgroesse
-            call fftw_execute_dft(this%planF, this%psi, this%psi)
-            this%psi = this%psi * this%kprop_half
-            call fftw_execute_dft(this%planB, this%psi, this%psi)
-            this%psi = this%psi / dble(NR)
-            psi_ges(:,J) = this%psi(:)      
+            this%psi_in = (0._dp, 0._dp)
+            this%psi_out = (0._dp, 0._dp)
+            this%psi_in(:) = psi_ges(:,J)  ! Hilfsgroesse
+            call fftw_execute_dft(this%planF, this%psi_in, this%psi_out)
+            this%psi_in = this%psi_out * this%kprop_half
+            call fftw_execute_dft(this%planB, this%psi_in, this%psi_out)
+            this%psi_in = this%psi_out / dble(NR)
+            psi_ges(:,J) = this%psi_in(:)      
         end do
     end subroutine split_operator
 
@@ -564,7 +569,8 @@ contains
         ! Destroy FFTW plans and free memory
         call fftw_destroy_plan(split_operator%planF)
         call fftw_destroy_plan(split_operator%planB)
-        call fftw_free(split_operator%p)
+        call fftw_free(split_operator%p_in)
+        call fftw_free(split_operator%p_out)
         ! Close all files
         close(this%norm_1d_tk)
         close(this%dens_1d_tk)
@@ -649,11 +655,12 @@ contains
         enddo
 
         do J = 1, Nstates
-            split_operator%psi = (0._dp, 0._dp)
-            split_operator%psi(:) = psi_outR1(:,J)
-            call fftw_execute_dft(split_operator%planF, split_operator%psi, split_operator%psi)
-            split_operator%psi = split_operator%psi/sqrt(dble(NR))
-            psi_outR1(:,J) = split_operator%psi(:)
+            split_operator%psi_in = (0._dp, 0._dp)
+            split_operator%psi_out = (0._dp, 0._dp)
+            split_operator%psi_in(:) = psi_outR1(:,J)
+            call fftw_execute_dft(split_operator%planF, split_operator%psi_in, split_operator%psi_out)
+            split_operator%psi_in = split_operator%psi_out/sqrt(dble(NR))
+            psi_outR1(:,J) = split_operator%psi_in(:)
         enddo
         this%psi_outR = this%psi_outR + psi_outR1
         this%psi_outR_inc = this%psi_outR_inc + abs(psi_outR1)**2
@@ -707,10 +714,10 @@ contains
             print*, 'Calculating KER spectra in state ', int(N-1)
 
             call split_operator%fft_initialize()
-            split_operator%psi(:) = psi_diss(:,N)
-            call fftw_execute_dft(split_operator%planF, split_operator%psi, split_operator%psi)
-            split_operator%psi = split_operator%psi/sqrt(dble(NR))
-            psi_diss(:,N) = split_operator%psi(:)
+            split_operator%psi_in(:) = psi_diss(:,N)
+            call fftw_execute_dft(split_operator%planF, split_operator%psi_in, split_operator%psi_out)
+            split_operator%psi_in = split_operator%psi_out/sqrt(dble(NR))
+            psi_diss(:,N) = split_operator%psi_in(:)
 
             norm_diss(N) = sum(abs(psi_diss(:,N))**2)*dR
             norm_outR(N) = sum(abs(this%psi_outR(:,N))**2)*dR
@@ -794,7 +801,8 @@ contains
         ! Destroy FFTW plans and free memory
         call fftw_destroy_plan(split_operator%planF)
         call fftw_destroy_plan(split_operator%planB)
-        call fftw_free(split_operator%p)
+        call fftw_free(split_operator%p_in)
+        call fftw_free(split_operator%p_out)
         
     end subroutine post_prop_analysis
     !------------------------------------------------------------------

@@ -135,7 +135,7 @@ contains
         class(nuclear_wavefkt_class), intent(inout) :: this
         integer :: i, j, V, G, K
         integer:: istep  
-        type(C_PTR):: planF, planB, p
+        type(C_PTR):: planF, planB, p_in, p_out
         real(dp):: dt2
         real(dp):: E1, norm
         real(dp), allocatable:: E(:,:)
@@ -148,12 +148,12 @@ contains
  
         real(dp), allocatable, dimension(:):: vprop
         real(dp), allocatable, dimension(:):: psi1
-      !  real(C_DOUBLE), allocatable, dimension(:):: psi
-        real(C_DOUBLE), pointer:: psi(:)
+        real(C_DOUBLE), allocatable, dimension(:):: psi
+        real(C_DOUBLE), pointer:: psi_in(:), psi_out(:)
         real(dp), allocatable, dimension(:,:):: ref
 
         ! allocate(psi(NR))
-        allocate(psi1(NR))
+        allocate(psi(NR),psi1(NR))
         allocate(vprop(NR), E(guess_vstates,Nstates))
         allocate(ref(NR,guess_vstates))
         
@@ -161,12 +161,14 @@ contains
         print*, "FFTW intialization ..."
         print*
         ! Creating aligned memory for FFTW
-        p = fftw_alloc_real(int(NR, C_SIZE_T)) 
-        call c_f_pointer(p,psi,[NR])
+        p_in = fftw_alloc_real(int(NR, C_SIZE_T)) 
+        call c_f_pointer(p_in,psi_in,[NR])
+        p_out = fftw_alloc_real(int(NR, C_SIZE_T)) 
+        call c_f_pointer(p_out,psi_out,[NR])
 
         call fftw_initialize_threads
         print*, "FFTW plan creation..."
-        call fftw_create_r2r_plans(psi, NR, planF, planB, ITP_par_FFTW)
+        call fftw_create_r2r_plans(psi_in, psi_out, NR, planF, planB, ITP_par_FFTW)
         print*
         print*, "Done setting up FFTW."
 
@@ -221,9 +223,13 @@ contains
                     end if
 
                     psi = psi * vprop
-                    call fftw_execute_r2r(planF, psi, psi)   
-                    psi = psi * exp((-dt2 * pR**2) / (2._dp*m_red))   
-                    call fftw_execute_r2r(planB, psi, psi)   
+                    psi_in = psi
+                    call fftw_execute_r2r(planF, psi_in, psi_out)
+                    psi = psi_out   
+                    psi = psi * exp((-dt2 * pR**2) / (2._dp*m_red)) 
+                    psi_in = psi  
+                    call fftw_execute_r2r(planB, psi_in, psi_out)
+                    psi = psi_out   
                     psi = psi / dble(Nr)         
                     psi = psi * vprop
 
@@ -293,7 +299,8 @@ contains
 
         call fftw_destroy_plan(planF)
         call fftw_destroy_plan(planB)
-        call fftw_free(p)
+        call fftw_free(p_in)
+        call fftw_free(p_out)
         deallocate(psi1, vprop, ref)
    
     end subroutine ITP
