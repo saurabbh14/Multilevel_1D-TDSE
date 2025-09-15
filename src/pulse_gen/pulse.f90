@@ -187,7 +187,6 @@ contains
 
         ! Generate the electric field
         timeloop: do k = 1, Nt
-            time = k*dt 
             this%E21(k) = this%E01 * this%g1(k) * cos(this%omega1 * (time(k) - this%t_mid1 &
                   & - this%pulse_offset1) + this%phi1)   
             this%E22(k) = this%E02 * this%g2(k) * cos(this%omega2 * (time(k) - this%t_mid2 &

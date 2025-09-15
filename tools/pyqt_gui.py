@@ -145,7 +145,8 @@ class MainWindow(QMainWindow):
             ("Build (nix build)", self.build_project),
             ("Run", self.run_simulation),
             ("Stop", self.stop_simulation),
-            ("Plot norm_1d", self.plot_norm),
+            ("Choose plot file", self.choose_plot_file),
+            ("Plot 1D data", self.plot_selected),
         ]:
             b = QPushButton(txt)
             b.clicked.connect(cb)
@@ -203,10 +204,14 @@ class MainWindow(QMainWindow):
         # Plot area
         plot_widget = QWidget()
         plot_layout = QVBoxLayout(plot_widget)
-        main_layout.addWidget(plot_widget, stretch=2)
-        self.fig = Figure(figsize=(6, 3))
+        main_layout.addWidget(plot_widget, stretch=3)
+        self.fig = Figure(figsize=(6, 4))
         self.canvas = FigureCanvas(self.fig)
         plot_layout.addWidget(self.canvas)
+
+        self.plot_file_selector = QLineEdit("norm_1d.out")
+        plot_layout.addWidget(self.plot_file_selector)
+
 
     # --- file ops ---
     def open_input(self):
@@ -334,6 +339,8 @@ class MainWindow(QMainWindow):
             y = data[:, 1] if data.shape[1] > 1 else data[:, 0]
             ax.plot(x, y)
         ax.set_title(f.name + " (live)")
+        ax.relim()
+        ax.autoscale_view(True, True, True)  
         self.canvas.draw()
 
 
@@ -361,13 +368,34 @@ class MainWindow(QMainWindow):
 
     # --- plotting ---
 
-    def plot_norm(self):
+    def choose_plot_file(self):
+        """Open a file dialog to choose a data file to plot, and set the selector."""
         text = self.editor.toPlainText()
         m = re.search(r"\boutput_data_dir\s*=\s*['\"]?([^'\"]+?)['\"\s\r\n/]*\n", text)
         outdir = PROJECT_ROOT
         if m:
             outdir = (PROJECT_ROOT / m.group(1).strip()).resolve()
-        f = outdir / "norm_1d.out"
+        fn, _ = QFileDialog.getOpenFileName(self, "Choose data file to plot", str(outdir), "Data Files (*.out *.dat *.txt);;All Files (*)")
+        if fn:
+            # Set relative path to output_data_dir if possible
+            try:
+                rel = str(Path(fn).relative_to(outdir))
+            except Exception:
+                rel = str(fn)
+            self.plot_file_selector.setText(rel)
+
+    def plot_selected(self):
+        """Plot the file chosen in the selector."""
+        fname = self.plot_file_selector.text().strip()
+        if not fname:
+            QMessageBox.information(self, "No file", "Please enter a file name to plot.")
+            return
+        text = self.editor.toPlainText()
+        m = re.search(r"\boutput_data_dir\s*=\s*['\"]?([^'\"]+?)['\"\s\r\n/]*\n", text)
+        outdir = PROJECT_ROOT
+        if m:
+            outdir = (PROJECT_ROOT / m.group(1).strip()).resolve()
+        f = outdir / fname
         if not f.exists():
             QMessageBox.information(self, "Not found", f"{f} not found. Ensure simulation produced outputs.")
             self.append_log(f"Plot file not found: {f}\n")
@@ -377,7 +405,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.append_log(f"Error reading {f}: {e}\n")
             return
-        # Clear the figure and add a new subplot each time
         self.fig.clear()
         ax = self.fig.add_subplot(111)
         if data.ndim == 1:
@@ -387,6 +414,8 @@ class MainWindow(QMainWindow):
             y = data[:, 1] if data.shape[1] > 1 else data[:, 0]
             ax.plot(x, y)
         ax.set_title(f.name)
+        ax.relim()
+        ax.autoscale_view(True, True, True)  
         self.canvas.draw()
         self.append_log(f"Plotted: {f}\n")
 
