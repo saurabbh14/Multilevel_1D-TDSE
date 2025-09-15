@@ -20,6 +20,7 @@ import re
 import subprocess
 import threading
 import time
+import os
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -105,7 +106,7 @@ class ProcRunner(QObject):
             if not plot_file_created and plot_file_path.exists():
                 plot_file_created = True
                 last_plot_time = now  # trigger immediately
-            if plot_file_created and (now - last_plot_time) >= 2.0:
+            if plot_file_created and (now - last_plot_time) >= 1.0:
                 self.progress.emit()
                 last_plot_time = now
 
@@ -196,7 +197,7 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.log, stretch=1)
 
         splitter.addWidget(right_widget)
-        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
 
         # Plot area
@@ -289,9 +290,29 @@ class MainWindow(QMainWindow):
             outdir = (PROJECT_ROOT / m.group(1).strip()).resolve()
         runner = ProcRunner(cmd, str(PROJECT_ROOT), output_dir=outdir)
         runner.line.connect(self.append_log)
-        runner.finished.connect(lambda rc: self.append_log(f"Simulation finished (rc={rc})\n"))
+        runner.finished.connect(self.on_run_finished)
         runner.progress.connect(self.plot_norm_live)  # Connect progress signal to live plot
         self._start_runner(runner)
+
+    def on_run_finished(self, rc):
+        self.append_log(f"Simulation finished (rc={rc})\n")
+        self.save_run_log()
+
+    def save_run_log(self):
+        """Save the run log to a log directory with incremental numbering."""
+        log_dir = PROJECT_ROOT / "run_logs"
+        log_dir.mkdir(exist_ok=True)
+        # Find next available log number
+        existing = sorted([f for f in log_dir.glob("run_log_*.txt")])
+        if existing:
+            last_num = max([int(f.stem.split("_")[-1]) for f in existing if f.stem.split("_")[-1].isdigit()])
+            next_num = last_num + 1
+        else:
+            next_num = 1
+        log_path = log_dir / f"run_log_{next_num}.txt"
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write(self.log.toPlainText())
+        self.append_log(f"Run log saved to: {log_path}\n")
 
     def plot_norm_live(self):
         """Update plot during simulation run (called on each output line)."""
@@ -303,8 +324,9 @@ class MainWindow(QMainWindow):
             data = np.loadtxt(f)
         except Exception:
             return
-        ax = self.fig.subplots()
-        ax.clear()
+        # Clear the figure and add a new subplot each time
+        self.fig.clear()
+        ax = self.fig.add_subplot(111)
         if data.ndim == 1:
             ax.plot(data)
         else:
@@ -355,8 +377,9 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.append_log(f"Error reading {f}: {e}\n")
             return
-        ax = self.fig.subplots()
-        ax.clear()
+        # Clear the figure and add a new subplot each time
+        self.fig.clear()
+        ax = self.fig.add_subplot(111)
         if data.ndim == 1:
             ax.plot(data)
         else:

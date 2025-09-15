@@ -1,6 +1,8 @@
 module timeit 
     use VarPrecision, only: dp
     implicit none
+    private
+    public:: timer, start, stop, elapsed
 
     type :: timer
         integer :: sys_scount, sys_ecount        ! system clock ticks (start/end)

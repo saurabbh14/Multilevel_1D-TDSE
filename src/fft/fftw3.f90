@@ -14,6 +14,7 @@ contains
 
     subroutine fftw_initialize_threads
         integer(C_INT) :: void
+
         void = fftw_init_threads( )
         if (void == 0) then
             write(*,*) 'Error in fftw_init_threads, quitting'

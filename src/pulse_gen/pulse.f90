@@ -255,7 +255,7 @@ contains
         integer:: field1_tk, field2_tk
         integer:: elec_field_tk, vec_field_tk
 
-        write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), "" ! 'pulse_data/'
+        write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), 'pulse_data/'
         print*, "creating pulse output directory ", trim(mk_out_dir)
         print*, "test"
         call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))

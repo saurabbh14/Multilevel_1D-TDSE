@@ -13,8 +13,9 @@ program TDSE_main
   use pulse_mod                 ! pulse generation and IO
   use data_au                   ! atomic units / unit conversion constants
   use initializer               ! subroutine to initialize grids, arrays
-  use nuclear_wavefkt          ! compute vibrational eigenstates via ITP
-  use propagation_mod
+  use nuclear_wavefkt           ! compute vibrational eigenstates via ITP
+  use propagation_mod           ! time propagation using split operator
+  use timeit                    ! timeit for checking elapsed time
   implicit none
 
   ! Local types/objects
@@ -24,6 +25,7 @@ program TDSE_main
   type(initializer_type) :: init_obj ! initializer object
   type(nuclear_wavefkt_class) :: nwf_obj ! nuclear wavefunction object
   type(time_prop) :: prop
+  type(timer) :: time_this
   
   ! Local counters and timers
   integer :: I, J, I_Emax
@@ -33,8 +35,7 @@ program TDSE_main
   real(dp) :: Emax                 ! placeholder for energy ranges
   
   ! Start overall timing
-  call cpu_time(st)
-  call system_clock(scount,rate)
+  call time_this%start()
 
   ! Read command line and input file
   call cmd_line%read()
@@ -78,11 +79,8 @@ program TDSE_main
   call pulse%deallocate_all()
 
   ! Final timing and report
-  call cpu_time(ft)
-  print*,'Run time=', ft-st, 'seconds' 
-  call system_clock(ecount)
-  timer_elapsed_time = real(ecount-scount,8)/real(rate,8)
-  write(*,*) "Calculated run time is ",timer_elapsed_time," seconds"
+  call time_this%stop()
+  call time_this%elapsed()
   
 end program
 

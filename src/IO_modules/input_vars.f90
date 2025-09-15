@@ -47,5 +47,8 @@ module InputVars
     ! FFTW parallelization flags read from input
     character(10):: prop_par_FFTW
     character(10):: ITP_par_FFTW
+
+    ! OMP threads (optional)
+    integer :: omp_nthreads
     
 end module InputVars

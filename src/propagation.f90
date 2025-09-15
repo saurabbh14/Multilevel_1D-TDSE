@@ -52,7 +52,7 @@ contains
         use global_vars, only: Nt
         class(time_prop), intent(inout) :: this
         real(dp), intent(in) :: E(Nt), A(Nt)
-        print*, "1D time propagation start ..."
+        print*, "Preparing time propagation ..."
         call this%initialize()
         call this%read_pot_files()
         call this%open_files_to_write()
@@ -74,34 +74,64 @@ contains
         allocate(this%vib_en(guess_vstates,Nstates))
     end subroutine initialize
 
+    subroutine file_status_check(filepath)
+        integer:: io, unit
+        integer:: size1, size2
+        logical:: EXST
+        character(len=*)::filepath
+
+        do 
+            inquire(file=adjustl(trim(filepath)), exist=EXST, size=size1)
+            if (EXST .and. size1 > 0) then
+                call sleep(1)
+                inquire(file=adjustl(trim(filepath)), size=size2)
+                if (size1 == size2) exit 
+            else
+                call sleep(1)
+            endif
+        enddo
+        print*, "Status of ", adjustl(trim(filepath)), " checked"
+    end subroutine file_status_check
+
     subroutine read_pot_files(this)
         use global_vars, only: NR, Nstates, Vstates, output_data_dir
         use varprecision, only: dp, sp
         class(time_prop), intent(inout) :: this
+        character(30):: nucl_wp_path
         character(150):: filepath
         integer:: chi0_tk, vstates_tk, vib_en_tk
         integer:: i, N, V, i_dummy
         real(sp):: dummy
 
+        nucl_wp_path = "nuclear_wavepacket_data/"
+
         ! implementation for reading potential files
-        write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "Bound-vibstates_in_Nthstates.out"
+        write(filepath,'(a,a,a)') adjustl(trim(output_data_dir)), adjustl(trim(nucl_wp_path)), "Bound-vibstates_in_Nthstates.out"
+        call file_status_check(filepath)
         open(newunit=vstates_tk,file=filepath,status='unknown')
+
 
         this%chi0 = 0._dp
         this%vib_en = 0._dp
         do N = 1, Nstates 
+            print*
+            print*, "Reading vibrational states in the Electronic state ", N-1
+            print*
+
             read(vstates_tk,*) i_dummy, Vstates(N)
 
-            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), &
+            write(filepath,'(a,a,a,i0,a)') adjustl(trim(output_data_dir)), adjustl(trim(nucl_wp_path)), &
                 & "BO_Electronic-state-g", int(N-1), "_Evib.out"
+            call file_status_check(filepath)
             open(newunit=vib_en_tk,file=filepath,status='unknown')
             do V = 1, Vstates(N)
                 read(vib_en_tk,*) i_dummy, this%vib_en(V,N)
             enddo
             close(vib_en_tk)
 
-            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "BO_Electronic-state-g", &
-                & int(N-1), "_vibstates.out"
+            write(filepath,'(a,a,a,i0,a)') adjustl(trim(output_data_dir)), adjustl(trim(nucl_wp_path)), &
+                & "BO_Electronic-state-g", int(N-1), "_vibstates.out"
+            call file_status_check(filepath)
             open(newunit=chi0_tk,file=filepath,status='unknown')
             print*, "NR:", NR, "Vstates(N)", Vstates(N)
 
@@ -111,6 +141,7 @@ contains
             enddo 
             close(chi0_tk)
         enddo
+        print*, "Done reading the vbrational states files"
         close(vstates_tk)
     end subroutine read_pot_files
 
@@ -121,18 +152,20 @@ contains
         class(time_prop), intent(inout) :: this
         integer :: i, N, v
         real(dp):: norm(Nstates)
-        real(dp), allocatable, dimension(:) ::vib_dist
+        real(dp), allocatable, dimension(:) :: vib_dist
+        print*
+        print*, "Initial wavefunction:"
         this%psi_ges = (0._dp, 0._dp)
         select case(initial_distribution) 
             case("single vibrational state")
-                print*, "initial wavefunction in..."
+                print*, "initial wavefunction is in..."
                 print*, N_ini-1, "electronic state and in", v_ini-1, "vibrational state"
                 do i = 1, NR
                     this%psi_ges(i,N_ini) = this%chi0(i,v_ini,N_ini) 
                 enddo  
 
             case("gaussian distribution")
-                print*, "initial wavefunction in..."
+                print*, "initial wavefunction is in..."
                 print*, N_ini-1, "electronic state and with a Gaussian distribution centered around",&
                     & Ri_tdse/au2a, "a.u. \n with deviation of", kappa_tdse, "."
                 do i = 1, NR
@@ -196,6 +229,8 @@ contains
             write(this%psi_1d_tk,*) R(i), abs(this%psi_ges(i,1))**2, abs(this%psi_ges(i,2))**2
         end do
         close(this%psi_1d_tk)
+
+        print*, "Wavefunction initialized."
     end subroutine ini_dist_choice
 
     subroutine absorber_gen(this)
@@ -209,6 +244,8 @@ contains
   
         allocate(this%abs_func(NR))
 
+        print*
+        print*, "Absorber placed around the number of grid points from the end of the grid:"
         this%i_cpmR = minloc(abs(R(:) - cpmR), 1) - 50
         print*, "i_cpmR =", this%i_cpmR, ", NR-i_cpmR", NR - this%i_cpmR
         print*, "R(NR-i_cpmR) =", R(NR - this%i_cpmR)
@@ -231,6 +268,8 @@ contains
             write(this%cof_1d_tk,*) R(i), abs(this%abs_func(i))
         end do
         close(this%cof_1d_tk)
+
+        print*, "Done setting up the absorber."
 
     end subroutine absorber_gen
 
@@ -294,12 +333,17 @@ contains
         use FFTW3
         class(split_operator_type), intent(inout) :: this
 
+        print*
+        print*, "FFTW intialization ..."
+        print*
         ! Creating aligned memory for FFTW
         this%p = fftw_alloc_complex(int(NR, C_SiZE_T)) 
         call c_f_pointer(this%p,this%psi,[NR])
 
         call fftw_initialize_threads
+        print*, "FFTW plan creation ..."
         call fftw_create_c2c_plans(this%psi, NR, this%planF, this%planB, prop_par_FFTW)
+        print*, "Done setting up FFTW."
 
     end subroutine fft_initialize
 
@@ -349,13 +393,15 @@ contains
 
     subroutine time_evolution(this, E, A)
         use global_vars, only: NR, Nstates, time, mu_all, Nt, adb, &
-            & dp, dR, guess_vstates, dt, Vstates, R, pR
+            & dp, dR, guess_vstates, dt, Vstates, R, pR, omp_nthreads
         use data_au, only: im, au2fs
         use blas_interfaces_module, only: zgemv
         use FFTW3
+        use omp_lib
         class(time_prop), intent(inout) :: this
         type(split_operator_type) :: split_operator
         integer :: i, j, k, v
+        integer :: max_num_threads
         real(dp), allocatable, dimension(:) :: evr, momt
         real(dp), allocatable, dimension(:) :: norm, normPn, norm_outR
         real(dp), allocatable, dimension(:) :: norm_SE_outR
@@ -377,8 +423,21 @@ contains
         call split_operator%kprop_gen()
         call split_operator%vprop_gen()
 
+        max_num_threads = omp_get_max_threads()
         print*
-        print*,'1D propagation...'
+        print*, "Setting openmp threads for matrix operations ..."
+        if (omp_nthreads > 0 .and. omp_nthreads < max_num_threads) then
+            continue
+        else
+            omp_nthreads = max_num_threads
+        endif       
+        print*, "Number of openmp threads (if not speciefied then maximum available):", omp_nthreads
+
+        call OMP_SET_NUM_THREADS(omp_nthreads) 
+        print*, "Done  setting up Openmp threads."
+
+        print*
+        print*,'1D time evolution...'
         print*
     
         this%psi_outR = (0._dp,0._dp)

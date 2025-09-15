@@ -2,6 +2,7 @@ result*
 [Oo]utput_data/
 tools/.venvs/
 .idea/
+run_logs/
 *.out
 *.mod
 output

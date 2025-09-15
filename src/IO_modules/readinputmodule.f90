@@ -24,6 +24,7 @@ module ReadInputFile
       namelist /absorber_choice/absorber
       namelist /ini_state/v_ini,N_ini,initial_distribution,temperature,kappa_tdse, RI_tdse
       namelist /parallelization/prop_par_FFTW,ITP_par_FFTW
+      namelist /openmp_threads/omp_nthreads
      
       open(newunit=input_tk, file=adjustl(trim(this%path)), status='old')
       read(input_tk, nml=grid)
@@ -38,6 +39,8 @@ module ReadInputFile
       read(input_tk,nml=absorber_choice)
       read(input_tk,nml=ini_state)
       read(input_tk,nml=parallelization)
+      read(input_tk,nml=openmp_threads)
+
       close(input_tk)
 
     end subroutine read_input_file
