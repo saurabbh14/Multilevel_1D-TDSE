@@ -5,19 +5,12 @@ module initializer
     implicit none
     private
     
-    public :: initializer_type
-    type :: initializer_type
-    contains
-        procedure :: setup => initializer_setup
-    end type initializer_type
-    
-
+    public :: initializer_setup
 
 contains
 
     !> Prepare working directories, grids and arrays, read potentials/dipoles.
-    subroutine initializer_setup(this)
-        class(initializer_type), intent(inout) :: this
+    subroutine initializer_setup
         call output_dir_check
         call allocate_arrays
         

@@ -1,7 +1,7 @@
 !> This module contains the subroutine for generating the laser pulse
 !> and the envelope functions.
 module pulse_mod
-    use global_vars, only: dp, Nt, output_data_dir, dt
+    use global_vars, only: dp, Nt, output_data_dir, dt, time
     use data_au
     use FFTW3
     use omp_lib
@@ -126,8 +126,7 @@ contains
     ! A subroutine for defining the field 
     subroutine generate_pulse(this)
         class(pulse_param), intent(inout) :: this
-        integer :: K
-        real(dp) :: time
+        integer :: k
         real(dp) :: A01, A02
 
         print*
@@ -154,19 +153,16 @@ contains
         ! Envelope shape for laser 1
         select case(trim(this%envelope_shape_laser1))
             case("cos2")
-                do K = 1, Nt
-                    time = K*dt 
-                    this%g1(k) = cos2(time, this%tp1, this%t_mid1, this%pulse_offset1)
+                do k = 1, Nt
+                    this%g1(k) = cos2(time(k), this%tp1, this%t_mid1, this%pulse_offset1)
                 enddo
             case("gaussian")
-                do K = 1, Nt
-                    time = K*dt
-                    this%g1(K) = gaussian(time, this%tp1, this%t_mid1)
+                do k = 1, Nt
+                    this%g1(k) = gaussian(time(k), this%tp1, this%t_mid1)
                 enddo
             case("trapazoidal")
-                do K = 1, Nt
-                    time = K*dt
-                    this%g1(K) = trapazoidal(time, this%tp1, this%t_mid1, this%rise_time1)
+                do k = 1, Nt
+                    this%g1(k) = trapazoidal(time(k), this%tp1, this%t_mid1, this%rise_time1)
                 enddo
             case default
                 print*, "Laser1: Default pulse shape is CW."
@@ -174,82 +170,91 @@ contains
         ! Envelope shape for laser 2
         select case(trim(this%envelope_shape_laser2))
             case("cos2")
-                do K = 1, Nt
-                    time = k*dt 
-                    this%g2(k) = cos2(time, this%tp1, this%t_mid2, this%pulse_offset2)
+                do k = 1, Nt 
+                    this%g2(k) = cos2(time(k), this%tp1, this%t_mid2, this%pulse_offset2)
                 enddo
             case("gaussian")
-                do K = 1, Nt
-                    time = K*dt
-                    this%g2(K) = gaussian(time, this%tp2, this%t_mid2)
+                do k = 1, Nt
+                    this%g2(k) = gaussian(time(k), this%tp2, this%t_mid2)
                 enddo
             case("trapazoidal")
-                do K = 1, Nt
-                    time = K*dt
-                    this%g2(K) = trapazoidal(time, this%tp2, this%t_mid2, this%rise_time2)
+                do k = 1, Nt
+                    this%g2(k) = trapazoidal(time(k), this%tp2, this%t_mid2, this%rise_time2)
             enddo
             case default
                 print*, "Laser2: Default pulse shape is CW."
         end select
 
         ! Generate the electric field
-        timeloop: do K = 1, Nt
+        timeloop: do k = 1, Nt
             time = k*dt 
-            this%E21(K) = this%E01 * this%g1(K) * cos(this%omega1 * (time - this%t_mid1 &
+            this%E21(k) = this%E01 * this%g1(k) * cos(this%omega1 * (time(k) - this%t_mid1 &
                   & - this%pulse_offset1) + this%phi1)   
-            this%E22(K) = this%E02 * this%g2(K) * cos(this%omega2 * (time - this%t_mid2 &
+            this%E22(k) = this%E02 * this%g2(k) * cos(this%omega2 * (time(k) - this%t_mid2 &
                   & - this%pulse_offset2) + this%phi2)
-            this%A21(k) = (-1._dp) * sum(this%E21(1:K)) * dt
-            this%A22(k) = (-1._dp) * sum(this%E22(1:K)) * dt
+            this%A21(k) = (-1._dp) * sum(this%E21(1:k)) * dt
+            this%A22(k) = (-1._dp) * sum(this%E22(1:k)) * dt
 
-            this%El(K) = this%E21(K) + this%E22(K)
-            this%Al(K) = (-1._dp)*sum(this%El(1:K)) * dt
+            this%El(k) = this%E21(k) + this%E22(k)
+            this%Al(k) = (-1._dp)*sum(this%El(1:k)) * dt
         enddo timeloop
         print*, "Pulse generation complete."
     end subroutine generate_pulse
 
     subroutine field_spectra(this)
+        use global_vars, only: prop_par_FFTW
         class(pulse_param), intent(inout) :: this
-        integer :: K, void
-        type(C_PTR) planTF
-        complex(dp), allocatable:: E_dum(:)
+        integer :: k
+        character(150) :: filename
+        character(2000) :: mk_out_dir
+        type(C_PTR) :: planTF, planTB, p_in, p_out
+        complex(C_DOUBLE), pointer:: E_dum_in(:), E_dum_out(:)
         ! file tokens
         integer:: field_spec_tk
 
+        ! Creating aligned memory for FFTW
+        p_in = fftw_alloc_complex(int(Nt, C_SiZE_T)) 
+        call c_f_pointer(p_in,E_dum_in,[Nt])
+        p_out = fftw_alloc_complex(int(Nt, C_SiZE_T)) 
+        call c_f_pointer(p_out,E_dum_out,[Nt])
+
         call fftw_initialize_threads
-    
-        allocate(E_dum(Nt))
+        print*, "FFTW plan creation for pulse spectra ..."
+        call fftw_create_c2c_plans(E_dum_in, E_dum_out, Nt, & 
+            & planTF, planTB, prop_par_FFTW)
+        print*, "Done setting up FFTW."
 
-        call fftw_plan_with_nthreads(omp_get_max_threads())
-        planTF = fftw_plan_dft_1d(Nt, E_dum, E_dum, FFTW_FORWARD, FFTW_ESTIMATE)
-        print*, "Done"
+        E_dum_in = this%El
+        call fftw_execute_dft(planTF,E_dum_in, E_dum_out)
+        E_dum_in = E_dum_out/sqrt(dble(Nt))
 
-        E_dum = this%El
-        call fftw_execute_dft(planTF,E_dum, E_dum)
-        E_dum = E_dum/sqrt(dble(Nt))
-
+        write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), 'pulse_data/'
+        write(filename,fmt='(a,a)') adjustl(trim(mk_out_dir)), 'field_spectra.out'
+        open(newunit=field_spec_tk, file=filename,status="unknown")
         ! write the field spectra to file
-        do K = Nt/2+1, Nt
-            write(field_spec_tk,*) -(Nt + 1 - K) * 2 *pi/(dt * Nt), & 
-                & real(E_dum(K)), imag(E_dum(K)), abs(E_dum(K))
+        do k = Nt/2+1, Nt
+            write(field_spec_tk,*) -(Nt + 1 - k) * 2 *pi/(dt * Nt), & 
+                & real(E_dum_in(k)), imag(E_dum_in(k)), abs(E_dum_in(k))
         enddo
-        do K = 1, Nt/2
-            write(field_spec_tk,*) (K-1)*2*pi/(dt*Nt), real(E_dum(K)), & 
-                & imag(E_dum(K)), abs(E_dum(K))
+        do k = 1, Nt/2
+            write(field_spec_tk,*) (k-1)*2*pi/(dt*Nt), real(E_dum_in(k)), & 
+                & imag(E_dum_in(k)), abs(E_dum_in(k))
         enddo
         close(field_spec_tk)
 
         call fftw_destroy_plan(planTF)
-        deallocate(E_dum)
+        call fftw_destroy_plan(planTB)
+        call fftw_free(p_in)
+        call fftw_free(p_out)
     end subroutine field_spectra
 
     ! A subroutine for writing the pulse to files
     subroutine write_pulse_to_file(this)
         class(pulse_param), intent(in) :: this
-        integer :: K
-        character(150) filename
-        character(2000) mk_out_dir
-        real(dp) time     
+        integer :: k
+        character(150) :: filename
+        character(2000) :: mk_out_dir
+ 
         ! file tokens
         integer:: envelope1_tk, envelope2_tk
         integer:: field1_tk, field2_tk
@@ -257,7 +262,6 @@ contains
 
         write(mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), 'pulse_data/'
         print*, "creating pulse output directory ", trim(mk_out_dir)
-        print*, "test"
         call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
     
         write(filename,fmt='(a,a)') adjustl(trim(mk_out_dir)), 'envelope1.out'
@@ -277,15 +281,14 @@ contains
             & 'Total_vector_field_phi', this%phi2/pi, 'pi.out'
         open(newunit=vec_field_tk, file=filename,status="unknown")
 
-        timeloop: do K = 1, Nt
-            time = k*dt 
-            write(field1_tk,*) time*au2fs, this%E21(K), this%A21(K)
-            write(field2_tk,*) time*au2fs, this%E22(K), this%A22(K)
+        timeloop: do k = 1, Nt
+            write(field1_tk,*) time(k)*au2fs, this%E21(k), this%A21(k)
+            write(field2_tk,*) time(k)*au2fs, this%E22(k), this%A22(k)
       
-            write(envelope1_tk,*) time*au2fs, this%g1(K)
-            write(envelope2_tk,*) time*au2fs, this%g2(K)
-            write(elec_field_tk,*) time*au2fs, this%El(K)
-            write(vec_field_tk,*) time*au2fs, this%Al(K)
+            write(envelope1_tk,*) time(k)*au2fs, this%g1(k)
+            write(envelope2_tk,*) time(k)*au2fs, this%g2(k)
+            write(elec_field_tk,*) time(k)*au2fs, this%El(k)
+            write(vec_field_tk,*) time(k)*au2fs, this%Al(k)
         enddo timeloop
 
         print*, "Done writing field information in the files."

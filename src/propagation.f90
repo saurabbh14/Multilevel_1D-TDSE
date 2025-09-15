@@ -75,7 +75,6 @@ contains
     end subroutine initialize
 
     subroutine file_status_check(filepath)
-        integer:: io, unit
         integer:: size1, size2
         logical:: EXST
         character(len=*)::filepath
@@ -234,7 +233,7 @@ contains
     end subroutine ini_dist_choice
 
     subroutine absorber_gen(this)
-        use global_vars, only: NR, R, dr, absorber
+        use global_vars, only: NR, R, absorber
         use pot_param, only: cpmR
         use varprecision, only: dp
         class(time_prop), intent(inout) :: this
@@ -329,7 +328,6 @@ contains
 
     subroutine fft_initialize(this)
         use global_vars, only: NR, prop_par_FFTW
-        use data_au, only: im
         use FFTW3
         class(split_operator_type), intent(inout) :: this
 
@@ -352,7 +350,7 @@ contains
     end subroutine fft_initialize
 
     subroutine kprop_gen(this)
-        use global_vars, only: NR, dpR, dt, m_red, PR
+        use global_vars, only: NR, dt, m_red, PR
         use data_au, only: im
         class(split_operator_type), intent(inout) :: this
 
@@ -377,8 +375,7 @@ contains
     end subroutine vprop_gen
 
     subroutine split_operator(this, psi_ges)
-        use global_vars, only: NR, Nstates, m_red, pR
-        use data_au, only: im
+        use global_vars, only: NR, Nstates
         use FFTW3
         class(split_operator_type), intent(inout) :: this
         complex(dp), intent(inout):: psi_ges(NR, Nstates)
@@ -397,9 +394,9 @@ contains
     end subroutine split_operator
 
     subroutine time_evolution(this, E, A)
-        use global_vars, only: NR, Nstates, time, mu_all, Nt, adb, &
+        use global_vars, only: NR, Nstates, time, mu_all, Nt, &
             & dp, dR, guess_vstates, dt, Vstates, R, pR, omp_nthreads
-        use data_au, only: im, au2fs
+        use data_au, only: au2fs
         use blas_interfaces_module, only: zgemv
         use FFTW3
         use omp_lib
@@ -494,6 +491,8 @@ contains
             call split_operator%split_operator(this%psi_ges)
 
             ! On the fly analysis and writing to files
+            ! external field
+            write(this%field_1d_tk,*) time(k) * au2fs, E(k), A(k)
             ! norm
             call integ(this%psi_ges, norm)
             write(this%norm_1d_tk,*) time(k) * au2fs, norm
@@ -590,7 +589,7 @@ contains
     subroutine localized_states_norm(this, normPn)
         use global_vars, only: NR, Nstates
         class(time_prop), intent(inout) :: this
-        real(dp):: normPn(Nstates), time
+        real(dp):: normPn(Nstates)
         complex(dp) :: psi_loc(NR,Nstates)
         normPn = 0._dp
 
@@ -602,7 +601,7 @@ contains
     end subroutine localized_states_norm
 
     subroutine expected_position(this, norm, evr)
-        use global_vars, only: NR, Nstates, dR, R
+        use global_vars, only: Nstates, dR, R
         class(time_prop), intent(inout) :: this
         real(dp):: evR(Nstates), norm(Nstates)
         integer:: N
@@ -622,7 +621,7 @@ contains
     end subroutine expected_position
 
     subroutine vib_pop_analysis(this, num_state)
-        use global_vars, only: Vstates, Nstates, guess_vstates, dR
+        use global_vars, only: Vstates, dR
         class(time_prop), intent(inout) :: this
         integer:: L
         integer, intent(in) :: num_state ! electronic state for which vibpop is calculated
@@ -641,7 +640,7 @@ contains
         use FFTW3
         class(time_prop), intent(inout) :: this
         type(split_operator_type), intent(in) :: split_operator
-        integer:: i, J
+        integer:: J
         complex(dp), allocatable :: psi_outR1(:,:)
 
         allocate(psi_outR1(NR,Nstates))
@@ -810,7 +809,7 @@ contains
          
         use global_vars, only:NR, Nstates, dR, dp
         implicit none
-        integer i, J
+        integer J
          
         real(dp) norm(Nstates)
         complex(dp) psi(NR,Nstates)
@@ -862,13 +861,12 @@ contains
     end subroutine Boltzmann_distribution
 
     subroutine complex_absorber_function(v_abs, f)
-        use global_vars, only: NR, dp, dR, dt, R
-        use data_au, only: im
+        use global_vars, only: NR, dp, dt, R
         use pot_param, only: cpmR
         
         integer i
         real(dp):: a, eps, V_abs(NR), n, R0, p
-        complex(dp):: iV_abs(NR), f(NR)
+        complex(dp):: f(NR)
     
         eps = epsilon(a) 
         print*, "Lower limit of the precision:", eps
@@ -926,12 +924,12 @@ contains
     end subroutine
 
     subroutine pulse2(tout,mu,E)
-        use global_vars, only:dt, Nstates,kap, lam, dp, idp
+        use global_vars, only:dt, Nstates,kap, dp
         use data_au, only:im
         use blas_interfaces_module, only : zgemv, dgemv
    
         integer:: i, J
-        real(dp):: w, u, uv, d, mu(Nstates,Nstates), q, E
+        real(dp):: u, uv, d, mu(Nstates,Nstates), E
         integer info, Lwork
    
         complex(dp):: tout, b, z, p, pT

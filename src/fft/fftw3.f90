@@ -43,7 +43,6 @@ contains
 
     subroutine fftw_create_c2c_plans(psi_in, psi_out, NR, planF, planB, parallel)
         use omp_lib
-        use varprecision, only: dp
         complex(C_DOUBLE), intent(inout) :: psi_in(:), psi_out(:)
         integer, intent(in) :: NR
         type(C_PTR), intent(inout) :: planF, planB

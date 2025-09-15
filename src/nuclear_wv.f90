@@ -73,7 +73,6 @@ contains
         logical :: Ext
         integer :: j
         character(150) :: filename
-        character(2000) :: mk_out_dir
 
         write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
                 & "Bound-vibstates_in_Nthstates.out"

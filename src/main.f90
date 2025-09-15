@@ -12,7 +12,7 @@ program TDSE_main
   use global_vars               ! shared allocatables and simulation variables
   use pulse_mod                 ! pulse generation and IO
   use data_au                   ! atomic units / unit conversion constants
-  use initializer               ! subroutine to initialize grids, arrays
+  use initializer, only: setup => initializer_setup   ! subroutine to initialize grids, arrays
   use nuclear_wavefkt           ! compute vibrational eigenstates via ITP
   use propagation_mod           ! time propagation using split operator
   use timeit                    ! timeit for checking elapsed time
@@ -22,7 +22,6 @@ program TDSE_main
   type(CommandLine) :: cmd_line      ! command line handler object
   type(InputFilePath) :: input_path  ! input file path holder
   type(pulse_param) :: pulse         ! pulse object with methods (read, init, gen)
-  type(initializer_type) :: init_obj ! initializer object
   type(nuclear_wavefkt_class) :: nwf_obj ! nuclear wavefunction object
   type(time_prop) :: prop
   type(timer) :: time_this
@@ -50,7 +49,7 @@ program TDSE_main
   print*, "_________________________"
 
   ! Prepare working directories, grids and arrays
-  call init_obj%setup
+  call setup()
 
   ! Print and initialize pulse parameters
   print*, "Printing input variables"
