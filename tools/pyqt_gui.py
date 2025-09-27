@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
             ("Run", self.run_simulation),
             ("Stop", self.stop_simulation),
             ("Choose plot file", self.choose_plot_file),
-            ("Plot 1D data", self.plot_selected),
+            ("Plot data", self.plot_selected),
         ]:
             b = QPushButton(txt)
             b.clicked.connect(cb)
@@ -326,7 +326,7 @@ class MainWindow(QMainWindow):
         if not f.exists():
             return  # Don't show error popups during live update
         try:
-            data = np.loadtxt(f)
+            data = np.genfromtxt(f,skip_header=1)
         except Exception:
             return
         # Clear the figure and add a new subplot each time
@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
             self.append_log(f"Plot file not found: {f}\n")
             return
         try:
-            data = np.loadtxt(f)
+            data = np.genfromtxt(f, skip_header=1)
         except Exception as e:
             self.append_log(f"Error reading {f}: {e}\n")
             return
@@ -409,6 +409,16 @@ class MainWindow(QMainWindow):
         ax = self.fig.add_subplot(111)
         if data.ndim == 1:
             ax.plot(data)
+        elif re.search("pm3d",fname):
+            x = data[:, 0]
+            y = data[:, 1] 
+            z = data[:, 2]
+            unique, nx = np.unique(y,return_counts=True)
+            unique, ny = np.unique(x,return_counts=True)
+            Z = z.reshape(nx[0],ny[0])
+            Z_trans = Z.T
+            ax.imshow(Z_trans,aspect="auto", origin="lower", extent=(x.min(),x.max(),y.min(),0.25*y.max()))
+            ax.set_title(f.name)
         else:
             x = data[:, 0]
             y = data[:, 1] if data.shape[1] > 1 else data[:, 0]

@@ -1,7 +1,6 @@
 module propagation_mod
     use varprecision, only: dp
     use split_operator_mod, only: split_operator_type
-    use, intrinsic :: iso_c_binding
     implicit none
     private
     public :: time_prop, propagation_1D
@@ -31,7 +30,7 @@ module propagation_mod
         procedure :: vib_pop_analysis
         procedure :: propagation_1D
         procedure :: absorber_gen
-        procedure :: open_files_to_write
+        procedure :: open_files_to_write, write_headers_to_files
         procedure :: continuum_prop
         procedure :: post_propagation_analysis => post_prop_analysis
         final :: deallocate_all
@@ -47,6 +46,7 @@ contains
         call this%initialize()
         call this%read_pot_files()
         call this%open_files_to_write()
+        call this%write_headers_to_files()
         call this%ini_dist_choice()
         call this%absorber_gen()
         call this%time_evolution(E, A)
@@ -120,6 +120,7 @@ contains
             initial_distribution, R
         use data_au, only: au2a, au2eV
         class(time_prop), intent(inout) :: this
+        character(len=5):: divider
         integer :: i, N, v
         real(dp):: norm(Nstates)
         real(dp), allocatable, dimension(:) :: vib_dist
@@ -195,7 +196,8 @@ contains
         !this%psi_ges(:,2) = this%psi_ges(:,2) / sqrt(norm(2))
 
         ! Writing header for initial wavefunction file
-        write(this%psi_1d_tk,'(a,a,a)'), "R-grid(a.u.) ", "Electronic Ground state density ", &
+        write(this%psi_1d_tk,'(a,a,a,a,a)') "R-grid(a.u.) ", divider, &
+            & "Electronic Ground state density ", divider,&
             & "Electronic First excited state density"
         ! Writing initial wavefunction to file
         do i = 1, NR
@@ -211,6 +213,7 @@ contains
         use pot_param, only: cpmR
         use varprecision, only: dp
         class(time_prop), intent(inout) :: this
+        character(len=5):: divider
         real(dp), allocatable:: cof(:), V_abs(:)
         complex(dp), allocatable:: exp_abs(:)
         integer:: i
@@ -237,7 +240,8 @@ contains
         end select
 
         ! writing hearder to the absorber function file
-        write(this%cof_1d_tk, '(a, a)') "R-grid(a.u.) ", "Absorber function(arb. units)" 
+        write(this%cof_1d_tk, '(a, a, a)') "R-grid(a.u.) ", divider, &
+            & "Absorber function(arb. units)" 
         ! Writing absorber function to file
         do i = 1, NR
             write(this%cof_1d_tk,*) R(i), abs(this%abs_func(i))
@@ -263,44 +267,91 @@ contains
         ! time dependent norm
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_1d.out"
         open(newunit=this%norm_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent ground state density 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "density_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "density_1d_pm3d.out"
         open(newunit=this%dens_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent excited state density
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "ex_density_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "ex_density_1d_pm3d.out"
         open(newunit=this%ex_dens_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent momentum density 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "Pdensity_1d.out"
-        open(newunit=this%Pdens_1d_tk,file=filepath,status='unknown')
+        !write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "momt_density_1d_pm3d.out"
+        !open(newunit=this%Pdens_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent average position 
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgR_1d.out"
         open(newunit=this%avgR_1d_tk,file=filepath,status='unknown') 
-        ! time dependent average momentum
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgPR_1d.out"
-        open(newunit=this%avgpR_1d_tk,file=filepath,status='unknown') 
+        
         ! time dependent norm in localized states
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_pn_1d.out"
         open(newunit=this%norm_pn_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent electric field 
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "field_1d.out"
         open(newunit=this%field_1d_tk,file=filepath,status='unknown')
-        ! time dependent accumulated absorbed density 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "accumulation_1d.out"
-        open(newunit=this%accumulation_1d_tk,file=filepath,status='unknown') 
+        
         ! time dependent absorbed momentum
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "momentum_1d.out"
         open(newunit=this%momt_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent vibrational populations 
         write(filepath,'(a,a)') adjustl(trim(output_data_dir)), 'vibpop1D_lambda.out'
         open(newunit=this%vibpop_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent norm of absorbed wavepacket
         write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_norm_1d.out"
         open(newunit=this%psi_outR_norm_1d_tk,file=filepath,status='unknown')
+        
         ! time dependent momentum density of absorbed wavepacket 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_Pdensity_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_momt_density_1d_pm3d.out"
         open(newunit=this%psi_outR_Pdens_1d_tk,file=filepath,status='unknown') 
 
     end subroutine open_files_to_write
+
+    subroutine write_headers_to_files(this)
+        class(time_prop), intent(inout) :: this
+        character(len=5):: divider
+
+        ! time dependent norm
+        write(this%norm_1d_tk,'(a,a,a)') "# Time(fs)", divider, &
+            & "Norm(∫|psi|^2)->[Nstates Columns]"
+
+        ! time dependent ground state density 
+        write(this%dens_1d_tk,'(a,a,a,a,a)') "#(gnuplot pm3d format) Time(fs)", divider, "R(a.u.)", &
+            & divider, "Density |psi|^2"
+        
+        ! time dependent excited state density
+        write(this%ex_dens_1d_tk,'(a,a,a,a,a)') "#(gnuplot pm3d format) Time(fs)", divider, "R(a.u.)", &
+            & divider, "Density |psi|^2 -> 1:Nstates Columns" 
+
+        ! time dependent average position 
+        write(this%avgR_1d_tk,'(a,a,a)') "# Time(fs)", divider, &
+            & "Expectation value of R(a.u.)->[Nstates Columns]"
+        
+        ! time dependent norm in localized states
+        write(this%norm_pn_1d_tk,'(a,a,a,a,a)') "# Time(fs)", divider, &
+            & "Norm_p(∫|psi_+|^2) ", divider, "Norm_n(∫|psi_-|^2)"
+        
+        ! time dependent electric field 
+        write(this%field_1d_tk,'(a,a,a,a,a)') "# Time(fs)", divider, &
+            & "Electric Field(a.u.)", divider, "Vector field(a.u.)"
+        
+        ! time dependent vibrational populations (only on electonic ground state)
+        write(this%vibpop_1d_tk,'(a,a,a,a)') "# Time(fs)", divider, &
+            & "Vibrational Poulation density on the Electronic ground state", &
+            & "->[Vstates Columns]"
+        
+        ! time dependent norm of absorbed wavepacket
+        write(this%psi_outR_norm_1d_tk,'(a,a,a)') "# Time(fs)", divider, &
+            & "Absorbed Norm(∫|psi_absorbed|^2)"
+
+        ! time dependent momentum density of absorbed wavepacket 
+        write(this%psi_outR_Pdens_1d_tk,'(a,a,a,a,a)') "# Time(fs)", divider, & 
+            & "Momentum(a.u.)", divider, "Density |psi|^2 -> [Nstates Columns]"
+
+    end subroutine write_headers_to_files
 
     subroutine time_evolution(this, E, A)
         use global_vars, only: NR, Nstates, time, mu_all, Nt, &
@@ -483,12 +534,10 @@ contains
         close(this%norm_1d_tk)
         close(this%dens_1d_tk)
         close(this%ex_dens_1d_tk)
-        close(this%Pdens_1d_tk)
+        !close(this%Pdens_1d_tk)
         close(this%avgR_1d_tk)
-        close(this%avgpR_1d_tk)
         close(this%norm_pn_1d_tk)
         close(this%field_1d_tk)
-        close(this%accumulation_1d_tk)
         close(this%momt_1d_tk)
         close(this%vibpop_1d_tk)
         close(this%psi_outR_norm_1d_tk)
@@ -939,7 +988,7 @@ contains
     end subroutine pulse2
 
     subroutine deallocate_all(this)
-        class(time_prop), intent(inout) :: this
+        type(time_prop), intent(inout) :: this
 
 
    

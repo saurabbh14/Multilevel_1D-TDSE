@@ -285,13 +285,15 @@ contains
         open(newunit=vec_field_tk, file=filename,status="unknown")
 
         timeloop: do k = 1, Nt
-            write(field1_tk,*) time(k)*au2fs, this%E21(k), this%A21(k)
-            write(field2_tk,*) time(k)*au2fs, this%E22(k), this%A22(k)
+            if (mod(k,200) == 0) then
+                write(field1_tk,*) time(k)*au2fs, this%E21(k), this%A21(k)
+                write(field2_tk,*) time(k)*au2fs, this%E22(k), this%A22(k)
       
-            write(envelope1_tk,*) time(k)*au2fs, this%g1(k)
-            write(envelope2_tk,*) time(k)*au2fs, this%g2(k)
-            write(elec_field_tk,*) time(k)*au2fs, this%El(k)
-            write(vec_field_tk,*) time(k)*au2fs, this%Al(k)
+                write(envelope1_tk,*) time(k)*au2fs, this%g1(k)
+                write(envelope2_tk,*) time(k)*au2fs, this%g2(k)
+                write(elec_field_tk,*) time(k)*au2fs, this%El(k)
+                write(vec_field_tk,*) time(k)*au2fs, this%Al(k)
+            endif
         enddo timeloop
 
         print*, "Done writing field information in the files."

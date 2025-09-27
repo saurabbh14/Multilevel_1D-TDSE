@@ -1,5 +1,6 @@
 module split_operator_mod
     use global_vars, only: dp
+    use, intrinsic :: iso_c_binding
     implicit none
     private
     public :: split_operator_type
