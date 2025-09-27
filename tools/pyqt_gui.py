@@ -206,8 +206,11 @@ class MainWindow(QMainWindow):
         plot_layout = QVBoxLayout(plot_widget)
         main_layout.addWidget(plot_widget, stretch=3)
         self.fig = Figure(figsize=(6, 4))
+        from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
         self.canvas = FigureCanvas(self.fig)
         plot_layout.addWidget(self.canvas)
+        self.toolbar = NavigationToolbar2QT(self.canvas,plot_widget)
+        plot_layout.addWidget(self.toolbar)
 
         self.plot_file_selector = QLineEdit("norm_1d.out")
         plot_layout.addWidget(self.plot_file_selector)
