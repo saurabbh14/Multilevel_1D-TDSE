@@ -1,3 +1,4 @@
+!> This module calculates the vibrational energies and states for a given electronic states
 module nuclear_wavefkt
 
     use global_vars
@@ -26,6 +27,7 @@ module nuclear_wavefkt
         procedure :: close_files
         procedure :: imaginary_time_propagation => ITP
         procedure :: nuclear_wf_calc
+        procedure :: deallocate_all
     end type nuclear_wavefkt_class
   
 contains
@@ -36,6 +38,7 @@ contains
         call this%initialize_wp_params()
         call this%create_output_dir()
         call this%imaginary_time_propagation()
+        call this%deallocate_all()
         print*, "Leaving vibrational state calculations ..."
     end subroutine nuclear_wf_calc  
 
@@ -78,7 +81,6 @@ contains
                 & "Bound-vibstates_in_Nthstates.out"
         open(newunit=this%vstates_tk,file=filename,status='unknown')
 
-
         Nloop: do j = 1, Nstates ! varying the different adiabatic states
             write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
                 & "BO_Electronic-state-g", int(j-1), "_vibstates.out"
@@ -112,6 +114,7 @@ contains
             if (.not. this%Files_exist(j)) then
                 close(this%vib_en_tk(j))
                 close(this%chi0_vib_en_tk(j))
+                close(this%chi0_tk(j))
             end if
         end do
     end subroutine close_files
@@ -300,9 +303,23 @@ contains
         call fftw_destroy_plan(planB)
         call fftw_free(p_in)
         call fftw_free(p_out)
-        deallocate(psi1, vprop, ref)
+        deallocate(psi, psi1, vprop, ref)
    
     end subroutine ITP
+
+    ! A subroutine for deallocating all arrays
+    subroutine deallocate_all(this)
+    !    type(pulse_param) :: this
+        class(pulse_param), intent(inout) :: this
+
+        print*
+        print*, "Cleaning up nuclear_wp variables ..."
+        if (allocated(this%Files_exist)) deallocate(this%Files_exist)
+        if (allocated(this%vib_en_tk)) deallocate(this%vib_en_tk)
+        if (allocated(this%chi0_vib_en_tk)) deallocate(this%chi0_vib_en_tk)
+        if (allocated(this%chi0_tk)) deallocate(this%chi0_tk)
+        print*,"Done"
+    end subroutine deallocate_all
 
     !_________________ Helper Subroutines______________________________________
 

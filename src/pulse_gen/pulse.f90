@@ -6,6 +6,8 @@ module pulse_mod
     use FFTW3
     use omp_lib
     implicit none
+    private
+    public:: pulse_param
 
     type :: pulse_param
         character(150) :: envelope_shape_laser1, envelope_shape_laser2
@@ -29,12 +31,13 @@ module pulse_mod
         procedure :: write_to_file => write_pulse_to_file
         procedure :: deallocate_env => deallocate_envelope
         procedure :: deallocate_field => deallocate_field
-        procedure :: deallocate_all => deallocate_all
         procedure :: spectra => field_spectra
+        procedure :: deallocate_all
     end type pulse_param
 
 contains
   
+    ! Read pulse parameters from the input file
     subroutine read_pulse_params(this, input_path)
         class(pulse_param), intent(inout) :: this
         character(2000), intent(in) :: input_path
@@ -69,7 +72,6 @@ contains
         this%phi2 = phi2
         this%rise_time1 = rise_time1
         this%rise_time2 = rise_time2
-
     end subroutine read_pulse_params
     
     ! A subroutine for printing the pulse parameters
@@ -198,8 +200,10 @@ contains
             this%Al(k) = (-1._dp)*sum(this%El(1:k)) * dt
         enddo timeloop
         print*, "Pulse generation complete."
+        call this%write_to_file()
     end subroutine generate_pulse
 
+    ! A subroutine to calculate the field spectra using FFTW
     subroutine field_spectra(this)
         use global_vars, only: prop_par_FFTW
         class(pulse_param), intent(inout) :: this
@@ -336,6 +340,7 @@ contains
         fwhm = (4._dp * log(2._dp)) / tp**2
         gaussian = exp(-fwhm * (time - t_mid)**2)
     end function gaussian
+
     !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ! A subroutine for deallocating the envelope arrays
     subroutine deallocate_envelope(this)
@@ -359,7 +364,11 @@ contains
     end subroutine deallocate_field
     ! A subroutine for deallocating all arrays
     subroutine deallocate_all(this)
+    !    type(pulse_param) :: this
         class(pulse_param), intent(inout) :: this
+
+        print*
+        print*, "Cleaning up pulse variables ..."
         call deallocate_envelope(this)
         call deallocate_field(this)
         if (allocated(this%El)) then
@@ -368,6 +377,7 @@ contains
         if (allocated(this%Al)) then
             deallocate(this%Al)
         end if
+        print*,"Done"
     end subroutine deallocate_all
   !------------------------------------------------------------------------------
 

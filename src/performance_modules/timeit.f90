@@ -1,3 +1,4 @@
+!> Module to check time performance of the code block
 module timeit 
     use VarPrecision, only: dp
     implicit none
@@ -15,21 +16,25 @@ module timeit
     end type timer
 
 contains
+    ! start the timer
     subroutine start(this)
         class(timer), intent(inout) :: this
         call cpu_time(this%cpu_st)
         call system_clock(this%sys_scount, this%rate)
     end subroutine start
 
+    ! stop the timer 
     subroutine stop(this)
         class(timer), intent(inout) :: this
         call cpu_time(this%cpu_ft)
         call system_clock(this%sys_ecount)
     end subroutine stop
 
+    ! calculate the elapsed time
     subroutine elapsed(this)
         class(timer), intent(inout) :: this
         this%timer_elapsed_time = this%cpu_ft - this%cpu_st
+        print*
         write(*,*) "CPU time elapsed: ", this%timer_elapsed_time, " seconds"
         write(*,*) "System clock time elapsed: ", real(this%sys_ecount - this%sys_scount, dp) / real(this%rate, dp), " seconds"
     end subroutine elapsed

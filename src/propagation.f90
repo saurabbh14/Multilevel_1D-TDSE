@@ -33,6 +33,7 @@ module propagation_mod
         procedure :: open_files_to_write
         procedure :: continuum_prop
         procedure :: post_propagation_analysis => post_prop_analysis
+        final :: deallocate_all
     end type time_prop
 
     type :: split_operator_type
@@ -60,8 +61,6 @@ contains
         call this%absorber_gen()
         call this%time_evolution(E, A)
         call this%post_propagation_analysis()
-
-
     end subroutine propagation_1D
 
     subroutine initialize(this)
@@ -223,6 +222,9 @@ contains
         this%psi_ges(:,1) = this%psi_ges(:,1) / sqrt(norm(1))
         !this%psi_ges(:,2) = this%psi_ges(:,2) / sqrt(norm(2))
 
+        ! Writing header for initial wavefunction file
+        write(this%psi_1d_tk,'(a,a,a)'), "R-grid(a.u.) ", "Electronic Ground state density ", &
+            & "Electronic First excited state density"
         ! Writing initial wavefunction to file
         do i = 1, NR
             write(this%psi_1d_tk,*) R(i), abs(this%psi_ges(i,1))**2, abs(this%psi_ges(i,2))**2
@@ -262,6 +264,8 @@ contains
                 print*, "No absorber selected. Reflections off the grid boundary may occur!"
         end select
 
+        ! writing hearder to the absorber function file
+        write(this%cof_1d_tk, '(a, a)') "R-grid(a.u.) ", "Absorber function(arb. units)" 
         ! Writing absorber function to file
         do i = 1, NR
             write(this%cof_1d_tk,*) R(i), abs(this%abs_func(i))
@@ -687,10 +691,12 @@ contains
         allocate(psi_diss(NR,Nstates))
         print*
         print*, "Post-propagation analysis..."
-        print*
+
+        call split_operator%fft_initialize()
         ! implementation of post-propagation analysis
         !Final vibrational population in ground state
         do N =1, Nstates
+            print*
             print*, "Final vibrational population in the elec. state", int(N-1)
             print*, "Number of vibrational states:", vstates(N)
             psi_bound = 0._dp
@@ -712,7 +718,6 @@ contains
                 & sum(abs(this%psi_outR(:,N))**2) * dR
             print*, 'Calculating KER spectra in state ', int(N-1)
 
-            call split_operator%fft_initialize()
             split_operator%psi_in(:) = psi_diss(:,N)
             call fftw_execute_dft(split_operator%planF, split_operator%psi_in, split_operator%psi_out)
             split_operator%psi_in = split_operator%psi_out/sqrt(dble(NR))
@@ -1004,10 +1009,17 @@ contains
         !print*, "tout"
         !write( * , * ) ((tout(i,j),j=1,Nstates), i=1,Nstates )
    
-   return
-   end subroutine pulse2
+    return
+    end subroutine pulse2
+
+    subroutine deallocate_all(this)
+        type(time_prop) :: this
+
+
+   
+    
+    end subroutine 
 
 end module propagation_mod
-
 
 

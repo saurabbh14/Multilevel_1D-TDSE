@@ -24,8 +24,6 @@ contains
         call p_grid
         call time_grid
         call mass_setup
-
-  
     end subroutine initializer_setup
 
     subroutine output_dir_check
@@ -46,6 +44,7 @@ contains
         allocate(adb(NR,Nstates),mu_all(Nstates,Nstates,NR))
     end subroutine allocate_arrays
 
+    ! Position grid (internuclear distance)
     subroutine r_grid
         use global_vars, only: R, NR, dR, dpR, dp
         use data_au, only: pi
@@ -57,6 +56,7 @@ contains
         dpr = (2._dp * pi) / (dR * NR)  ! momentum-grid spacing via FFT conventions
     end subroutine r_grid
 
+    ! Calculating relavent masses in a diatomic system (or a system divided into two mass blocks)
     subroutine mass_setup
         use global_vars, only: m1, m2, mn, m_red, m_eff, mn1, mn2, lam, kap, dp
         use data_au, only: mass
@@ -106,6 +106,7 @@ contains
         return
     end subroutine  
 
+    ! Time-grid in a.u.
     subroutine time_grid
         use global_vars, only: dt, Nt, time
         integer:: k
@@ -113,7 +114,6 @@ contains
         do k = 1, Nt
             time(k) = k * dt
         end do
-
     end subroutine time_grid
 
     !------------------------------------------------------------------------------
@@ -169,7 +169,6 @@ contains
                 end do
                 close(pot_out_tk)
         end select
-
     end subroutine pot_read
     
     !> Read transition dipole moments for each electronic-state pair.

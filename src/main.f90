@@ -53,8 +53,8 @@ program TDSE_main
 
   ! Print and initialize pulse parameters
   print*, "Printing input variables"
-  call pulse%initialize()
   call print_input_vars()
+  call pulse%initialize()
   call pulse%param_print()
 
   ! Allocate arrays for computed vibrational states
@@ -67,7 +67,7 @@ program TDSE_main
 
   ! Generate and store pulse(s) then run time propagation
   call pulse%generate()
-  call pulse%write_to_file()
+
 
   print*, "Time dependent calcuations"
 

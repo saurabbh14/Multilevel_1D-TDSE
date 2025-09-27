@@ -1,3 +1,4 @@
+!> This module reads the variables from the input file
 module ReadInputFile
     use global_vars
     use pulse_mod
