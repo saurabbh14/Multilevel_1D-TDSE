@@ -33,7 +33,7 @@ module propagation_mod
         procedure :: open_files_to_write, write_headers_to_files
         procedure :: continuum_prop
         procedure :: post_propagation_analysis => post_prop_analysis
-        final :: deallocate_all
+        procedure :: deallocate_all
     end type time_prop
 
 contains
@@ -51,6 +51,7 @@ contains
         call this%absorber_gen()
         call this%time_evolution(E, A)
         call this%post_propagation_analysis()
+        call this%deallocate_all()
     end subroutine propagation_1D
 
     subroutine initialize(this)
@@ -765,6 +766,21 @@ contains
         
     end subroutine post_prop_analysis
 
+    subroutine deallocate_all(this)
+        class(time_prop), intent(inout):: this
+
+        print*
+        print*, "Cleaning up time propagation variables ..."
+        if(allocated(this%chi0)) deallocate(this%chi0)
+        if(allocated(this%psi_ges)) deallocate(this%psi_ges)
+        if(allocated(this%vib_en)) deallocate(this%vib_en)
+        if(allocated(this%psi_chi)) deallocate(this%psi_chi)
+        if(allocated(this%abs_func)) deallocate(this%abs_func)
+        if(allocated(this%psi_outR)) deallocate(this%psi_outR)
+        if(allocated(this%psi_outR_inc)) deallocate(this%psi_outR_inc)
+        print*, "Done."
+    end subroutine deallocate_all
+
     !------------------------------------------------------------------
     !-------- Helper functions ----------------------------------------
     !------------------------------------------------------------------
@@ -987,14 +1003,6 @@ contains
    
     return
     end subroutine pulse2
-
-    subroutine deallocate_all(this)
-        type(time_prop), intent(inout) :: this
-
-
-   
-    
-    end subroutine 
 
 end module propagation_mod
 
