@@ -11,21 +11,21 @@ contains
 
     !> Prepare working directories, grids and arrays, read potentials/dipoles.
     subroutine initializer_setup
-        use output_dir_mod, only: output_data_dir, setup_output_dir
-        call output_dir_check
-        call setup_output_dir
-        call allocate_arrays
+        use output_dir_mod, only: output_dir_check, setup_output_dir
+        call output_dir_check()
+        call setup_output_dir()
+        call allocate_arrays()
         
         ! Read potentials and transition dipoles (or generate synthetic ones)
-        call pot_read
-        call trans_dipole_read
+        call pot_read()
+        call trans_dipole_read()
 
         ! Prepare grids and related parameters
-        call into_atomic_units
-        call r_grid
-        call p_grid
-        call time_grid
-        call mass_setup
+        call into_atomic_units()
+        call r_grid()
+        call p_grid()
+        call time_grid()
+        call mass_setup()
     end subroutine initializer_setup
 
     subroutine allocate_arrays
