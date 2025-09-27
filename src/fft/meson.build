@@ -1,1 +1,1 @@
-fft_mod_sources = files('fftw3.f03')
+fft_mod_sources = files('fftw3.f90')
