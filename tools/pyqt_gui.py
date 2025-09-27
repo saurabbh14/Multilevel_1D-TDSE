@@ -89,9 +89,9 @@ class ProcRunner(QObject):
         plot_file_created = False
         last_plot_time = time.time()
         plot_file_path = None
-        # Determine which file to watch (norm_1d.out for your current setup)
+        # Determine which file to watch
         if self.output_dir:
-            plot_file_path = Path(self.output_dir) / "norm_1d.out"
+            plot_file_path = Path(self.output_dir) / "time_prop/norm_1d.out"
         else:
             plot_file_path = Path(PROJECT_ROOT) / "norm_1d.out"
 
@@ -325,7 +325,7 @@ class MainWindow(QMainWindow):
     def plot_norm_live(self):
         """Update plot during simulation run (called on each output line)."""
         outdir = getattr(self.proc_runner, "output_dir", PROJECT_ROOT)
-        f = outdir / "norm_1d.out"
+        f = outdir / "time_prop/norm_1d.out"
         if not f.exists():
             return  # Don't show error popups during live update
         try:
