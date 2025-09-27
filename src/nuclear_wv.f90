@@ -14,14 +14,12 @@ module nuclear_wavefkt
         integer :: guess_Vstates
         real(dp) :: RI, kappa
         character(10) :: ITP_par_FFTW
-        character(2000):: mk_out_dir
         logical, allocatable :: Files_exist(:)
         integer :: vstates_tk
         integer, allocatable, dimension(:) :: vib_en_tk, chi0_vib_en_tk, chi0_tk
         integer :: not_converged_tk
     contains
         procedure :: read_guess_wp_params
-        procedure :: create_output_dir
         procedure :: initialize_wp_params
         procedure :: open_files, open_not_converged_files
         procedure :: close_files
@@ -36,7 +34,6 @@ contains
         class(nuclear_wavefkt_class), intent(inout) :: this
         call this%read_guess_wp_params()
         call this%initialize_wp_params()
-        call this%create_output_dir()
         call this%imaginary_time_propagation()
         call this%deallocate_all()
         print*, "Leaving vibrational state calculations ..."
@@ -60,29 +57,19 @@ contains
         allocate(this%vib_en_tk(Nstates), this%chi0_vib_en_tk(Nstates), this%chi0_tk(Nstates))
     end subroutine initialize_wp_params
 
-    subroutine create_output_dir(this)
-        use global_vars, only: output_data_dir
-        class(nuclear_wavefkt_class), intent(inout) :: this
-
-        write(this%mk_out_dir, '(a,a)') adjustl(trim(output_data_dir)), 'nuclear_wavepacket_data/'
-        print*, "checking/creating nuclear (vibrational) wavepacket output directory ", trim(this%mk_out_dir)
-        call execute_command_line("mkdir -p " // adjustl(trim(this%mk_out_dir)))
-    end subroutine create_output_dir
-
-
     subroutine open_files(this)
-        use global_vars, only: Nstates
+        use global_vars, only: Nstates, nucl_wf_dir
         class(nuclear_wavefkt_class), intent(inout) :: this
         logical :: Ext
         integer :: j
         character(150) :: filename
 
-        write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
+        write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "Bound-vibstates_in_Nthstates.out"
         open(newunit=this%vstates_tk,file=filename,status='unknown')
 
         Nloop: do j = 1, Nstates ! varying the different adiabatic states
-            write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
+            write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "BO_Electronic-state-g", int(j-1), "_vibstates.out"
             inquire(file=filename, Exist=Ext)
             print*, trim(filename), " ", Ext
@@ -90,14 +77,14 @@ contains
             
             if (Ext) cycle
 
-            write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
+            write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "BO_Electronic-state-g", int(j-1), "_Evib.out"
             open(newunit=this%vib_en_tk(j),file=filename,status='unknown')
-            write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
+            write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "BO_Electronic-state-g", int(j-1), "_chi0-Evib.out"
             open(newunit=this%chi0_vib_en_tk(j),file=filename,status='unknown')
 
-            write(filename,'(a,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
+            write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
               & "BO_Electronic-state-g", int(J-1), "_vibstates.out"
             open(newunit=this%chi0_tk(j),file=filename,status='unknown')
 
@@ -124,7 +111,7 @@ contains
         integer :: j, v
         character(1000) :: filename
 
-        write(filename,'(a,a,i0,a,i0,a)') adjustl(trim(this%mk_out_dir)), &
+        write(filename,'(a,a,i0,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
             & "Electronic-state-g", int(j-1), "_vib-state", int(v-1), &
             & "_uncoverged-final-wf.out"
         open(newunit=this%not_converged_tk,file=filename,status='unknown')

@@ -11,7 +11,9 @@ contains
 
     !> Prepare working directories, grids and arrays, read potentials/dipoles.
     subroutine initializer_setup
+        use output_dir_mod, only: output_data_dir, setup_output_dir
         call output_dir_check
+        call setup_output_dir
         call allocate_arrays
         
         ! Read potentials and transition dipoles (or generate synthetic ones)
@@ -25,15 +27,6 @@ contains
         call time_grid
         call mass_setup
     end subroutine initializer_setup
-
-    subroutine output_dir_check
-        use global_vars, only: output_data_dir
-        character(2000):: mk_out_dir
-        ! Ensure output directory exists (create if missing)
-        write(mk_out_dir, '(a)') adjustl(trim(output_data_dir))
-        print*, "creating output directory ", trim(mk_out_dir)
-        call execute_command_line("mkdir -p " // adjustl(trim(mk_out_dir)))
-    end subroutine output_dir_check
 
     subroutine allocate_arrays
         use global_vars, only: adb, mu_all, R, pR, en, &

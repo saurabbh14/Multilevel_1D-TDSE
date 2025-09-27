@@ -14,4 +14,7 @@ module global_vars
     real(dp):: m_eff, m_red                  ! effective and reduced mass
     real(dp):: mn, mn1, mn2                  ! total mass and individual mass ratios
     real(dp), allocatable:: time(:)         ! time grid
+    character(len=2000) :: pulse_data_dir   ! output directory path for pulse data
+    character(len=2000) :: nucl_wf_dir      ! output directory path for nuclear wavefunction data
+    character(len=2000) :: time_prop_dir    ! output directory path for time propagation data
 end module global_vars

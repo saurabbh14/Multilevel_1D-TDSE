@@ -253,59 +253,60 @@ contains
     end subroutine absorber_gen
 
     subroutine open_files_to_write(this)
-        use global_vars, only: output_data_dir
+        use global_vars, only: time_prop_dir
         class(time_prop), intent(inout) :: this
         character(150):: filepath
+
         ! inintial wavefunction
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi0_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "psi0_1d.out"
         open(newunit=this%psi_1d_tk,file=filepath,status='unknown') 
         ! Absorber function
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "absorber_function.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "absorber_function.out"
         open(newunit=this%cof_1d_tk,file=filepath,status='unknown') 
         
         ! Propagation outputs
         ! time dependent norm
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "norm_1d.out"
         open(newunit=this%norm_1d_tk,file=filepath,status='unknown')
         
         ! time dependent ground state density 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "density_1d_pm3d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "density_1d_pm3d.out"
         open(newunit=this%dens_1d_tk,file=filepath,status='unknown')
         
         ! time dependent excited state density
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "ex_density_1d_pm3d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "ex_density_1d_pm3d.out"
         open(newunit=this%ex_dens_1d_tk,file=filepath,status='unknown')
         
         ! time dependent momentum density 
-        !write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "momt_density_1d_pm3d.out"
+        !write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "momt_density_1d_pm3d.out"
         !open(newunit=this%Pdens_1d_tk,file=filepath,status='unknown')
         
         ! time dependent average position 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "avgR_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "avgR_1d.out"
         open(newunit=this%avgR_1d_tk,file=filepath,status='unknown') 
         
         ! time dependent norm in localized states
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "norm_pn_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "norm_pn_1d.out"
         open(newunit=this%norm_pn_1d_tk,file=filepath,status='unknown')
         
         ! time dependent electric field 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "field_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "field_1d.out"
         open(newunit=this%field_1d_tk,file=filepath,status='unknown')
         
         ! time dependent absorbed momentum
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "momentum_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "momentum_1d.out"
         open(newunit=this%momt_1d_tk,file=filepath,status='unknown')
         
         ! time dependent vibrational populations 
-        write(filepath,'(a,a)') adjustl(trim(output_data_dir)), 'vibpop1D_lambda.out'
+        write(filepath,'(a,a)') adjustl(trim(time_prop_dir)), 'vibpop1D_lambda.out'
         open(newunit=this%vibpop_1d_tk,file=filepath,status='unknown')
         
         ! time dependent norm of absorbed wavepacket
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_norm_1d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "psi_outR_norm_1d.out"
         open(newunit=this%psi_outR_norm_1d_tk,file=filepath,status='unknown')
         
         ! time dependent momentum density of absorbed wavepacket 
-        write(filepath, '(a,a)') adjustl(trim(output_data_dir)), "psi_outR_momt_density_1d_pm3d.out"
+        write(filepath, '(a,a)') adjustl(trim(time_prop_dir)), "psi_outR_momt_density_1d_pm3d.out"
         open(newunit=this%psi_outR_Pdens_1d_tk,file=filepath,status='unknown') 
 
     end subroutine open_files_to_write
@@ -625,7 +626,7 @@ contains
     end subroutine continuum_prop
 
     subroutine post_prop_analysis(this)
-        use global_vars, only: NR, Nstates, dR, vstates, output_data_dir, pR, m_red
+        use global_vars, only: NR, Nstates, dR, vstates, pR, m_red, time_prop_dir
         use FFTW3
         class(time_prop), intent(inout) :: this
         type(split_operator_type) :: split_operator
@@ -682,19 +683,19 @@ contains
 
             print*, "Writing KER spectra in state ", int(N-1)
             ! file for unnormalized KER spectra  
-            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "KER_spectra_from_state_g", &
+            write(filepath,'(a,a,i0,a)') adjustl(trim(time_prop_dir)), "KER_spectra_from_state_g", &
                 &  int(N-1), "_unnormalized.out"
             open(newunit=KER_spectra_un_tk,file=filepath,status='unknown')
             ! file for unnormalized momentum spectra
-            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "momt_spectra_from_state_g",&
+            write(filepath,'(a,a,i0,a)') adjustl(trim(time_prop_dir)), "momt_spectra_from_state_g",&
                 &  int(N-1), "_unnormalized.out"
             open(newunit=momt_spectra_un_tk,file=filepath,status='unknown')
             ! file for normalized KER spectra
-            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "KER_spectra_from_state_g", &
+            write(filepath,'(a,a,i0,a)') adjustl(trim(time_prop_dir)), "KER_spectra_from_state_g", &
                 &  int(N-1), ".out"
             open(newunit=KER_spectra_tk,file=filepath,status='unknown')
             ! file for normalized momentum spectra
-            write(filepath,'(a,a,i0,a)') adjustl(trim(output_data_dir)), "momt_spectra_from_state_g",&
+            write(filepath,'(a,a,i0,a)') adjustl(trim(time_prop_dir)), "momt_spectra_from_state_g",&
                 &  int(N-1), ".out"
             open(newunit=momt_spectra_tk,file=filepath,status='unknown')
 
@@ -724,16 +725,16 @@ contains
             close(KER_spectra_tk)
         enddo
 
-        write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra.out"
+        write(filepath,'(a,a)') adjustl(trim(time_prop_dir)), "Total_KER_spectra.out"
         open(newunit=KER_spectra_un_tk,file=filepath,status='unknown')
         
-        write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra.out"
+        write(filepath,'(a,a)') adjustl(trim(time_prop_dir)), "Total_momt_spectra.out"
         open(newunit=momt_spectra_un_tk,file=filepath,status='unknown')
         
-        write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_KER_spectra_normalized.out"
+        write(filepath,'(a,a)') adjustl(trim(time_prop_dir)), "Total_KER_spectra_normalized.out"
         open(newunit=KER_spectra_tk,file=filepath,status='unknown')
         
-        write(filepath,'(a,a)') adjustl(trim(output_data_dir)), "Total_momt_spectra_normalized.out"
+        write(filepath,'(a,a)') adjustl(trim(time_prop_dir)), "Total_momt_spectra_normalized.out"
         open(newunit=momt_spectra_tk,file=filepath,status='unknown')
 
         do i=NR/2 +1,NR
