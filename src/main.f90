@@ -68,7 +68,7 @@ program TDSE_main
   ! Generate and store pulse(s) then run time propagation
   call pulse%generate()
 
-
+  print*
   print*, "Time dependent calcuations"
 
   call prop%propagation_1D(pulse%El, pulse%Al)

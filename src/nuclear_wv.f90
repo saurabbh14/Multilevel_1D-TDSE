@@ -310,7 +310,7 @@ contains
     ! A subroutine for deallocating all arrays
     subroutine deallocate_all(this)
     !    type(pulse_param) :: this
-        class(pulse_param), intent(inout) :: this
+        class(nuclear_wavefkt_class), intent(inout) :: this
 
         print*
         print*, "Cleaning up nuclear_wp variables ..."
