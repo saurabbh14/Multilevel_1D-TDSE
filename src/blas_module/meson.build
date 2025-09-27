@@ -1,1 +1,1 @@
-blas_mod_sources = files('blas_interface.f90')
+blas_mod_sources = files('blas_interface.f03')

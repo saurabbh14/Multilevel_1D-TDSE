@@ -1,0 +1,1 @@
+propagator_mod_sources = files('split_operator.f03')
