@@ -118,7 +118,7 @@ contains
     subroutine pot_read
         use global_vars, only:R, NR, adb, adb_pot, &
                 & input_data_dir, output_data_dir, &
-                & Elec_pot_kind, dp
+                & Elec_pot_kind, dp, Rmin, Rmax, dR
         use data_au
         use pot_param, only: morse_potential
 
@@ -148,8 +148,11 @@ contains
                 close(pot_out_tk)
  
             case("Morse")
-                ! Fill only the ground state with a Morse potential
-                do I =1, NR
+                ! Make R-grid spacing
+                dR = (Rmax-Rmin)/(NR-1)
+                ! Fill only the ground state with a Morse potential at specific grid points
+                do i = 1, NR
+                    R(i) = Rmin + (i-1)*dR
                     adb(I,1) = morse_potential(0.17_dp,1.85_dp,0.743_dp/au2a,R(I))
                 enddo
    

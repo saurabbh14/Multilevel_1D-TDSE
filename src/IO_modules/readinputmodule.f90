@@ -13,7 +13,7 @@ module ReadInputFile
       class(InputFilePath), intent(inout) :: this
       integer :: input_tk
 
-      namelist /grid/NR
+      namelist /grid/NR,Rmin,Rmax
       namelist /nucl_masses/m1,m2
       namelist /time_grid/dt,Nt
       namelist /elec_states/Nstates, Elec_pot_kind
@@ -28,8 +28,8 @@ module ReadInputFile
       namelist /openmp_threads/omp_nthreads
      
       open(newunit=input_tk, file=adjustl(trim(this%path)), status='old')
-      read(input_tk, nml=grid)
-      read(input_tk, nml=nucl_masses)
+      read(input_tk,nml=grid)
+      read(input_tk,nml=nucl_masses)
       read(input_tk,nml=time_grid)
       read(input_tk,nml=elec_states)
       read(input_tk,nml=vib_states)

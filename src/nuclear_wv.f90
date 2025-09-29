@@ -1,4 +1,4 @@
-!> This module calculates the vibrational energies and states for a given electronic states
+!> This module calculates the vibrational energies and states for given electronic states
 module nuclear_wavefkt
 
     use global_vars
@@ -10,26 +10,28 @@ module nuclear_wavefkt
     private
     public :: nuclear_wavefkt_class, nuclear_wf_calc
 
+    !> Class to hold all data and methods for nuclear wavefunction calculations
     type :: nuclear_wavefkt_class
-        integer :: guess_Vstates
-        real(dp) :: RI, kappa
-        character(10) :: ITP_par_FFTW
-        logical, allocatable :: Files_exist(:)
-        integer :: vstates_tk
-        integer, allocatable, dimension(:) :: vib_en_tk, chi0_vib_en_tk, chi0_tk
-        integer :: not_converged_tk
+        integer :: guess_Vstates                ! Number of maximum guesse vibrational states
+        real(dp) :: RI, kappa                   ! Initial Gaussian center, kappa parameter
+        character(10) :: ITP_par_FFTW           ! FFTW parameter string for parallelization
+        logical, allocatable :: Files_exist(:)  ! Flags for existence of output files per state
+        integer :: vstates_tk                   ! File handle for vibrational states
+        integer, allocatable, dimension(:) :: vib_en_tk, chi0_vib_en_tk, chi0_tk ! File handles per state
+        integer :: not_converged_tk             ! File handle for unconverged states
     contains
-        procedure :: read_guess_wp_params
-        procedure :: initialize_wp_params
-        procedure :: open_files, open_not_converged_files
-        procedure :: close_files
-        procedure :: imaginary_time_propagation => ITP
-        procedure :: nuclear_wf_calc
-        procedure :: deallocate_all
+        procedure :: read_guess_wp_params       ! Read initial parameters from global variables
+        procedure :: initialize_wp_params       ! Initialize/allocate arrays and convert units
+        procedure :: open_files, open_not_converged_files ! Open output files for results
+        procedure :: close_files                ! Close all opened files
+        procedure :: imaginary_time_propagation => ITP ! Main vibrational state calculation
+        procedure :: nuclear_wf_calc            ! High-level wrapper for calculation
+        procedure :: deallocate_all             ! Deallocate arrays and clean up
     end type nuclear_wavefkt_class
   
 contains
 
+    !> High-level routine to run the vibrational state calculation
     subroutine nuclear_wf_calc(this)
         class(nuclear_wavefkt_class), intent(inout) :: this
         call this%read_guess_wp_params()
@@ -39,6 +41,7 @@ contains
         print*, "Leaving vibrational state calculations ..."
     end subroutine nuclear_wf_calc  
 
+    !> Read initial guess parameters from global variables
     subroutine read_guess_wp_params(this)
         class(nuclear_wavefkt_class), intent(inout) :: this
         this%guess_Vstates = guess_vstates
@@ -47,6 +50,7 @@ contains
         this%ITP_par_FFTW = ITP_par_FFTW
     end subroutine read_guess_wp_params
 
+    !> Initialize/allocate arrays and convert units for calculation
     subroutine initialize_wp_params(this)
         use data_au, only: au2a
         class(nuclear_wavefkt_class), intent(inout) :: this
@@ -57,6 +61,7 @@ contains
         allocate(this%vib_en_tk(Nstates), this%chi0_vib_en_tk(Nstates), this%chi0_tk(Nstates))
     end subroutine initialize_wp_params
 
+    !> Open output files for vibrational state results
     subroutine open_files(this)
         use global_vars, only: Nstates, nucl_wf_dir
         class(nuclear_wavefkt_class), intent(inout) :: this
@@ -64,19 +69,22 @@ contains
         integer :: j
         character(150) :: filename
 
+        ! Open file for total vibrational states
         write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "Bound-vibstates_in_Nthstates.out"
         open(newunit=this%vstates_tk,file=filename,status='unknown')
 
         Nloop: do j = 1, Nstates ! varying the different adiabatic states
+            ! Check if output file for this state exists
             write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "BO_Electronic-state-g", int(j-1), "_vibstates.out"
             inquire(file=filename, Exist=Ext)
             print*, trim(filename), " ", Ext
             this%Files_exist(j) = Ext
             
-            if (Ext) cycle
+            if (Ext) cycle ! Skip if file exists
 
+            ! Open files for vibrational energies and wavefunctions
             write(filename,'(a,a,i0,a)') adjustl(trim(nucl_wf_dir)), &
                 & "BO_Electronic-state-g", int(j-1), "_Evib.out"
             open(newunit=this%vib_en_tk(j),file=filename,status='unknown')
@@ -91,6 +99,7 @@ contains
         end do Nloop
     end subroutine open_files
 
+    !> Close all open files
     subroutine close_files(this)
         class(nuclear_wavefkt_class), intent(inout) :: this
         integer :: j
@@ -106,6 +115,7 @@ contains
         end do
     end subroutine close_files
 
+    !> Open file for unconverged vibrational state wavefunction
     subroutine open_not_converged_files(this, v, j)
         class(nuclear_wavefkt_class), intent(inout) :: this
         integer :: j, v
@@ -117,6 +127,7 @@ contains
         open(newunit=this%not_converged_tk,file=filename,status='unknown')
     end subroutine open_not_converged_files
 
+    !> Main routine for vibrational state calculation using Imaginary Time Propagation (ITP)
     subroutine ITP(this)
         use global_vars, only: NR, Nstates, dp, R, adb, m_red, &
             & Vstates, chi0
@@ -135,13 +146,14 @@ contains
       !  double precision:: total_pop, Boltzmann_populations(guess_Vstates) 
       !  double precision:: trans_dipole(guess_Vstates,guess_Vstates) 
  
+        ! Working arrays for wavefunction and reference states
         real(dp), allocatable, dimension(:):: vprop
         real(dp), allocatable, dimension(:):: psi1
         real(C_DOUBLE), allocatable, dimension(:):: psi
         real(C_DOUBLE), pointer:: psi_in(:), psi_out(:)
         real(dp), allocatable, dimension(:,:):: ref
 
-        ! allocate(psi(NR))
+        ! Allocate arrays for calculation
         allocate(psi(NR),psi1(NR))
         allocate(vprop(NR), E(guess_vstates,Nstates))
         allocate(ref(NR,guess_vstates))
@@ -172,13 +184,14 @@ contains
         E = 0._dp
         call this%open_files()
 
-        Nloop: do J = 1, Nstates ! varying the different adiabatic states
+        Nloop: do J = 1, Nstates ! Loop over electronic states
             if (this%Files_exist(J)) then
                 print*, "Vibrational states already computed for state ", J-1, ". Skipping ITP."
                 cycle
             endif
 
-            do i = 1, NR ! new vprop
+            ! Prepare potential for propagation
+            do i = 1, NR
                 vprop(i) = exp(-0.5_dp * dt2 * adb(i,J))
             end do
             Rin = R(minloc(adb(:,J),1))
@@ -187,6 +200,7 @@ contains
             
             Vloop: do V = 1, guess_Vstates ! loop over the vibrational state
 
+                ! Initialize wavefunction for this vibrational state
                 do i = 1, NR  ! symmetry for the startup function
                     psi(i) = exp(this%kappa * (R(I) -Rin )**2) + &
                     &   (-1._dp)**(V - 1) * exp(-0.5_dp * (R(I) + Rin)**2)
@@ -227,6 +241,7 @@ contains
 
                     psi = psi / sqrt(norm)
 
+                    ! Check for convergence
                     if(abs(E(V,J) - E1).le.thresh) then
                         print*, 'Surface', J-1, 'Vibrational state', V-1, E(V,J) * au2eV, 'eV'
                         print*, 'Resonance freq for dissociation', (adb(NR,J)-E(V,J))*au2eV, 'eV'
@@ -246,6 +261,7 @@ contains
                         write(this%chi0_vib_en_tk(j),*)
                         exit
                     elseif(K .eq. istep) then
+                        ! If not converged, write out unconverged wavefunction and stop
                         print*,'Iteration not converged!'
                         print*,'Program stopped!'
                         print*
@@ -286,6 +302,7 @@ contains
         end do Nloop            ! end of surface loop
         call this%close_files()
 
+        ! Clean up FFTW plans and memory
         call fftw_destroy_plan(planF)
         call fftw_destroy_plan(planB)
         call fftw_free(p_in)
@@ -294,9 +311,8 @@ contains
    
     end subroutine ITP
 
-    ! A subroutine for deallocating all arrays
+    !> A subroutine for deallocating all arrays
     subroutine deallocate_all(this)
-    !    type(pulse_param) :: this
         class(nuclear_wavefkt_class), intent(inout) :: this
 
         print*
@@ -309,7 +325,8 @@ contains
     end subroutine deallocate_all
 
     !_________________ Helper Subroutines______________________________________
-
+    
+    !> Calculate eigenvalue from two wavefunctions using log ratio
     subroutine eigenvalue_R(A, B, E, dt2)      
       
         use global_vars, only: NR, dp
@@ -327,8 +344,7 @@ contains
         return
     end subroutine eigenvalue_R    
   
-    ! ........................................................
-                                                          
+    !> Integrate product of two arrays over grid                                                          
     subroutine integ_r(A, B, C)
 
         use global_vars, only:NR, dR, dp   

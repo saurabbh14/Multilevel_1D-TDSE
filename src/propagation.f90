@@ -5,39 +5,50 @@ module propagation_mod
     private
     public :: time_prop, propagation_1D
 
+    !> Type to hold all data and methods for time propagation
     type :: time_prop
-        real(dp), allocatable :: chi0(:,:,:) 
-        complex(dp), allocatable :: psi_ges(:,:)
-        real(dp), allocatable :: vib_en(:,:)
-        complex(dp), allocatable :: psi_chi(:)
-        integer :: i_cpmR
-        complex(dp), allocatable :: abs_func(:)
+            ! Vibrational wavefunctions for all electronic states
+            real(dp), allocatable :: chi0(:,:,:) 
+            ! Total propagated wavefunction (all electronic states)
+            complex(dp), allocatable :: psi_ges(:,:)
+            ! Vibrational energies for all states
+            real(dp), allocatable :: vib_en(:,:)
+            ! Vibrational population amplitudes (projection)
+            complex(dp), allocatable :: psi_chi(:)
+            ! Index for absorber placement
+            integer :: i_cpmR
+            ! Absorber function (complex or mask)
+            complex(dp), allocatable :: abs_func(:)
 
-        complex(dp), allocatable :: psi_outR(:,:)
-        real(dp), allocatable :: psi_outR_inc(:,:)
+            ! Absorbed/dissociated part of wavefunction
+            complex(dp), allocatable :: psi_outR(:,:)
+            ! Incremental absorbed density (for analysis)
+            real(dp), allocatable :: psi_outR_inc(:,:)
         
-        integer:: psi_1d_tk, cof_1d_tk
-        integer:: norm_1d_tk, dens_1d_tk, ex_dens_1d_tk, Pdens_1d_tk
-        integer:: avgR_1d_tk, avgpR_1d_tk, norm_pn_1d_tk
-        integer:: field_1d_tk, accumulation_1d_tk, momt_1d_tk
-        integer:: vibpop_1d_tk, psi_outR_norm_1d_tk, psi_outR_Pdens_1d_tk
+            ! File handles for output files
+            integer:: psi_1d_tk, cof_1d_tk
+            integer:: norm_1d_tk, dens_1d_tk, ex_dens_1d_tk, Pdens_1d_tk
+            integer:: avgR_1d_tk, avgpR_1d_tk, norm_pn_1d_tk
+            integer:: field_1d_tk, accumulation_1d_tk, momt_1d_tk
+            integer:: vibpop_1d_tk, psi_outR_norm_1d_tk, psi_outR_Pdens_1d_tk
     contains
-        procedure :: initialize
-        procedure :: read_pot_files
-        procedure :: ini_dist_choice
-        procedure :: time_evolution
-        procedure :: localized_states_norm, expected_position
-        procedure :: vib_pop_analysis
-        procedure :: propagation_1D
-        procedure :: absorber_gen
-        procedure :: open_files_to_write, write_headers_to_files
-        procedure :: continuum_prop
-        procedure :: post_propagation_analysis => post_prop_analysis
-        procedure :: deallocate_all
+    procedure :: initialize
+    procedure :: read_pot_files      ! Reads vibrational state and energy files
+    procedure :: ini_dist_choice     ! Initializes the wavefunction distribution
+    procedure :: time_evolution      ! Main time propagation loop
+    procedure :: localized_states_norm, expected_position
+    procedure :: vib_pop_analysis    ! Analyzes vibrational populations
+    procedure :: propagation_1D      ! High-level wrapper for propagation
+    procedure :: absorber_gen        ! Sets up absorber function
+    procedure :: open_files_to_write, write_headers_to_files
+    procedure :: continuum_prop      ! Handles continuum part of wavefunction
+    procedure :: post_propagation_analysis => post_prop_analysis
+    procedure :: deallocate_all      ! Cleans up and deallocates arrays
     end type time_prop
 
 contains
 
+    !> High-level wrapper for 1D time propagation
     subroutine propagation_1D(this, E, A)
         use global_vars, only: Nt
         class(time_prop), intent(inout) :: this
@@ -54,6 +65,7 @@ contains
         call this%deallocate_all()
     end subroutine propagation_1D
 
+    !> Allocates arrays and initializes variables for propagation
     subroutine initialize(this)
         use global_vars, only: NR, Nstates, guess_vstates
         class(time_prop), intent(inout) :: this
@@ -64,6 +76,7 @@ contains
         allocate(this%vib_en(guess_vstates,Nstates))
     end subroutine initialize
 
+    !> Reads vibrational state and energy files from disk
     subroutine read_pot_files(this)
         use global_vars, only: NR, Nstates, Vstates, output_data_dir
         use varprecision, only: dp, sp
@@ -116,6 +129,7 @@ contains
         close(vstates_tk)
     end subroutine read_pot_files
 
+    !> Initializes the wavefunction distribution based on user choice
     subroutine ini_dist_choice(this)
         use global_vars, only: NR, Nstates, Vstates, v_ini, N_ini, Ri_tdse, kappa_tdse, &
             initial_distribution, R
@@ -209,6 +223,7 @@ contains
         print*, "Wavefunction initialized."
     end subroutine ini_dist_choice
 
+    !> Sets up absorber function for boundary treatment
     subroutine absorber_gen(this)
         use global_vars, only: NR, R, absorber
         use pot_param, only: cpmR
@@ -253,6 +268,7 @@ contains
 
     end subroutine absorber_gen
 
+    !> Opens all output files for writing propagation results
     subroutine open_files_to_write(this)
         use global_vars, only: time_prop_dir
         class(time_prop), intent(inout) :: this
@@ -312,6 +328,7 @@ contains
 
     end subroutine open_files_to_write
 
+    !> Writes headers to output files for easier post-processing
     subroutine write_headers_to_files(this)
         class(time_prop), intent(inout) :: this
         character(len=5):: divider
@@ -355,6 +372,7 @@ contains
 
     end subroutine write_headers_to_files
 
+    !> Main time propagation loop: evolves wavefunction and writes outputs
     subroutine time_evolution(this, E, A)
         use global_vars, only: NR, Nstates, time, mu_all, Nt, &
             & dp, dR, guess_vstates, dt, Vstates, R, pR, omp_nthreads
@@ -546,6 +564,7 @@ contains
         close(this%psi_outR_Pdens_1d_tk)
     end subroutine time_evolution
 
+    !> Analyzes norm in localized states
     subroutine localized_states_norm(this, normPn)
         use global_vars, only: NR, Nstates
         class(time_prop), intent(inout) :: this
@@ -560,6 +579,7 @@ contains
         
     end subroutine localized_states_norm
 
+    !> Calculates expected position for each state
     subroutine expected_position(this, norm, evr)
         use global_vars, only: Nstates, dR, R
         class(time_prop), intent(inout) :: this
@@ -580,6 +600,7 @@ contains
 
     end subroutine expected_position
 
+    !> Analyzes vibrational populations for a given electronic state
     subroutine vib_pop_analysis(this, num_state)
         use global_vars, only: Vstates, dR
         class(time_prop), intent(inout) :: this
@@ -594,6 +615,7 @@ contains
 
     end subroutine vib_pop_analysis
 
+    !> Continuum propagation of wavefunction (absorbed/dissociated)
     subroutine continuum_prop(this, split_operator)
         use global_vars, only: NR, Nstates, dt, adb
         use data_au, only: im
@@ -626,6 +648,7 @@ contains
 
     end subroutine continuum_prop
 
+    !> Post-propagation analysis: calculates spectra and populations
     subroutine post_prop_analysis(this)
         use global_vars, only: NR, Nstates, dR, vstates, pR, m_red, time_prop_dir
         use FFTW3
@@ -766,6 +789,7 @@ contains
         
     end subroutine post_prop_analysis
 
+    !> Clean up and array deallocation
     subroutine deallocate_all(this)
         class(time_prop), intent(inout):: this
 
@@ -784,6 +808,7 @@ contains
     !------------------------------------------------------------------
     !-------- Helper functions ----------------------------------------
     !------------------------------------------------------------------
+    !> Checks file status for safe reading
     subroutine file_status_check(filepath)
         integer:: size1, size2
         logical:: EXST
@@ -802,6 +827,7 @@ contains
         print*, "Status of ", adjustl(trim(filepath)), " checked"
     end subroutine file_status_check
 
+    !> Integrates norm of wavefunction over grid
     subroutine integ(psi, norm)
          
         use global_vars, only:NR, Nstates, dR, dp
@@ -821,6 +847,7 @@ contains
         return 
     end subroutine
 
+    !> Calculates Boltzmann distribution for vibrational populations
     subroutine Boltzmann_distribution(N, E, Boltzmann_populations)
         use global_vars, only: temperature, dp, Vstates, guess_vstates
         use data_au, only: kB
@@ -829,8 +856,6 @@ contains
         real(dp), intent(in):: E(guess_vstates)
         real(dp), allocatable, intent(out):: Boltzmann_populations(:)
         real(dp):: total_pop
-
-
            
         total_pop = sum(exp(-E(:)/(kB*temperature)))
         print*, "total populations =", total_pop
@@ -857,6 +882,7 @@ contains
 
     end subroutine Boltzmann_distribution
 
+    !> Generates complex absorber function for boundary
     subroutine complex_absorber_function(v_abs, f)
         use global_vars, only: NR, dp, dt, R
         use pot_param, only: cpmR
@@ -883,6 +909,7 @@ contains
         f(:) = exp(-dt *V_abs(:))
     end subroutine
 
+    !> Generates mask absorber function (cosine)
     subroutine mask_function_cos(cof)
         use global_vars, only:NR, R, dR, dp
         use data_au
@@ -903,6 +930,7 @@ contains
         return
     end subroutine
     !------------------------------------------------
+    !> Generates mask absorber function (exponential)
     subroutine mask_function_ex(cof)
         use global_vars, only:NR, R, dR, dp
         use data_au
@@ -920,6 +948,7 @@ contains
         return
     end subroutine
 
+    !> Generates pulse matrix for interstate coupling
     subroutine pulse2(tout,mu,E)
         use global_vars, only:dt, Nstates,kap, dp
         use data_au, only:im

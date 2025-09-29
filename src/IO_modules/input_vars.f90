@@ -8,6 +8,8 @@ module InputVars
 
     ! R-grid
     integer(C_INT):: NR                    ! number of grid points (coordinate space)
+    real(dp) :: Rmin                       ! grid minimum (positive) in Angs
+    real(dp) :: Rmax                       ! grid maximum in Angs
     
     ! electronic states
     integer:: Nstates                      ! number of electronic BO states

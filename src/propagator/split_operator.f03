@@ -4,18 +4,25 @@ module split_operator_mod
     implicit none
     private
     public :: split_operator_type
+    ! Type for split-operator propagation and FFTW management
     type :: split_operator_type
+        ! Kinetic propagator for half and full time steps
         complex(dp), allocatable :: kprop_half(:), kprop_full(:)
+        ! Potential propagator for each electronic state
         complex(dp), allocatable :: vprop(:,:)
+        ! FFTW plan and memory pointers
         type(C_PTR) :: planF, planB, p_in, p_out
+        ! FFTW input/output arrays
         complex(C_DOUBLE), pointer:: psi_in(:), psi_out(:)
     contains
-        procedure :: fft_initialize
-        procedure :: kprop_gen, vprop_gen
-        procedure :: split_operator
+        procedure :: fft_initialize      ! Initialize FFTW plans and memory
+        procedure :: kprop_gen           ! Generate kinetic propagators
+        procedure :: vprop_gen           ! Generate potential propagators
+        procedure :: split_operator      ! Apply split-operator step
     end type split_operator_type
 
 contains
+    !> Initialize FFTW plans and memory for split-operator propagation
     subroutine fft_initialize(this)
         use global_vars, only: NR, prop_par_FFTW
         use FFTW3
@@ -39,6 +46,7 @@ contains
 
     end subroutine fft_initialize
 
+    !> Generate kinetic propagators for half and full time steps
     subroutine kprop_gen(this)
         use global_vars, only: NR, dt, m_red, PR
         use data_au, only: im
@@ -51,6 +59,7 @@ contains
          
     end subroutine kprop_gen
 
+    !> Generate potential propagators for all electronic states
     subroutine vprop_gen(this)
         use global_vars, only: NR, Nstates, dt, adb, dp
         use data_au, only: im
@@ -64,6 +73,7 @@ contains
 
     end subroutine vprop_gen
 
+    !> Apply split-operator step to wavefunction psi_ges
     subroutine split_operator(this, psi_ges)
         use global_vars, only: NR, Nstates
         use FFTW3
