@@ -4,7 +4,61 @@ This file gives short example `input.ini` snippets for common use-cases. Merge t
 
 For running new calculations, we recommend copying the provided `input.ini` file and `input_data` directory to a separate directory, ideally, where the calculation data is intended to be stored. Then you may edit the calculation parameters in the `input.ini` file (even the file's name) and also provide different input data in the `input_data` directory, such as potential energy surfaces and transition dipole moments.
 
-Run the executable (after build):
+## Run the executable (after build):
+### Test Run:
+After successfully building the package, a test calculation can be run using the following command.
+```
+$ ./result/bin/MLTDSE input.ini
+```
+The test run should create the `output_data` directory with the following directory tree.
+```
+$ tree output_data
+output_data/
+├── 12_read.out
+├── H2+_BO.dat_read.out
+├── nuclear_wavepacket_data
+│   ├── BO_Electronic-state-g0_chi0-Evib.out
+│   ├── BO_Electronic-state-g0_Evib.out
+│   ├── BO_Electronic-state-g0_vibstates.out
+│   ├── BO_Electronic-state-g1_chi0-Evib.out
+│   ├── BO_Electronic-state-g1_Evib.out
+│   ├── BO_Electronic-state-g1_vibstates.out
+│   └── Bound-vibstates_in_Nthstates.out
+├── pulse_data
+│   ├── electric_field1_E0.10_width110.out
+│   ├── electric_field2_E0.0000_width0.out
+│   ├── envelope1.out
+│   ├── envelope2.out
+│   ├── Total_electric_field_phi0.00pi.out
+│   └── Total_vector_field_phi0.00pi.out
+└── time_prop
+    ├── absorber_function.out
+    ├── avgR_1d.out
+    ├── density_1d_pm3d.out
+    ├── ex_density_1d_pm3d.out
+    ├── field_1d.out
+    ├── KER_spectra_from_state_g0.out
+    ├── KER_spectra_from_state_g0_unnormalized.out
+    ├── KER_spectra_from_state_g1.out
+    ├── KER_spectra_from_state_g1_unnormalized.out
+    ├── momentum_1d.out
+    ├── momt_spectra_from_state_g0.out
+    ├── momt_spectra_from_state_g0_unnormalized.out
+    ├── momt_spectra_from_state_g1.out
+    ├── momt_spectra_from_state_g1_unnormalized.out
+    ├── norm_1d.out
+    ├── norm_pn_1d.out
+    ├── psi0_1d.out
+    ├── psi_outR_momt_density_1d_pm3d.out
+    ├── psi_outR_norm_1d.out
+    ├── Total_KER_spectra_normalized.out
+    ├── Total_KER_spectra.out
+    ├── Total_momt_spectra_normalized.out
+    ├── Total_momt_spectra.out
+    └── vibpop1D_lambda.out
+
+```
+
 
 Notes:
 - The examples below only show the relevant namelists to change for each use-case.
