@@ -2,8 +2,6 @@
 
 This file gives short example `input.ini` snippets for common use-cases. Merge these namelists into your main `input.ini` (keep other required sections such as &grid, &elec_states, &time_grid, &laser_param, etc.).
 
-For running new calculations, we recommend copying the provided `input.ini` file and `input_data` directory to a separate directory, ideally, where the calculation data is intended to be stored. Then you may edit the calculation parameters in the `input.ini` file (even the file's name) and also provide different input data in the `input_data` directory, such as potential energy surfaces and transition dipole moments.
-
 ## Run the executable (after build):
 ### Test Run:
 After successfully building the package, a test calculation can be run using the following command.
@@ -59,8 +57,10 @@ output_data/
 
 ```
 
+### Custom runs:
+For running new custom calculations, we recommend copying the provided `input.ini` file and `input_data` directory to a separate directory, ideally, where the calculation data is intended to be stored. Then you may edit the calculation parameters in the `input.ini` file (even the file's name) and also provide different input data in the `input_data` directory, such as potential energy surfaces and transition dipole moments. In the current version, it is necessary to include all input parameter sections in the input file, as already given in the test `input.ini` file, and to provide a path to the `input_data` directory in it. 
 
-Notes:
+**Notes:**
 - The examples below only show the relevant namelists to change for each use-case.
 - For full parameter descriptions consult `input.ini` and `src/readinputmodule.f90` / `src/variablesmodule.f90`.
 
