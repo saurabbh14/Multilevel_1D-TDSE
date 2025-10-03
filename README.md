@@ -16,7 +16,7 @@ If you have a working Nix installation with nix flakes turned on (see below), th
 $ git clone https://github.com/saurabbh14/Multilevel_1D-TDSE.git   # Cloning the GitHub repo
 $ cd $Dir_path                                                     # Package directory
 $ nix build                                                        # Package build
-./results/bin/ML-TDSE input.ini                                    # Run with test input parameters (input.ini)
+$ ./results/bin/ML-TDSE input.ini                                  # Run with test input parameters (input.ini)
 ```
 The further usage and test output are given in USAGE.md
 
@@ -52,7 +52,7 @@ This will create an executable file at $Dir_path/result/bin/ML-TDSE.
 ### Test run
 To run the test calculations, you can use the provided input file for the H2+ molecular ion.
 ```
-./results/bin/ML-TDSE input.ini
+$ ./results/bin/ML-TDSE input.ini
 ```  
 
 For more in depth documentation of the package is given in [`DOCUMENTATION.md`](./DOCUMENTATION.md) file and for some usage examples are listed in [`USAGE.md`](./USAGE.md) file. 
