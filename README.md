@@ -10,6 +10,16 @@ This package has only been tested on Linux systems (Ubuntu/Debian). The distribu
 1. Nix package manager
 2. git (optional)
 
+### Quick run on Systems with Nix
+If you have a working Nix installation with nix flakes turned on (see below), then you may use the following commands to quickly build and run the package.
+```
+$ git clone https://github.com/saurabbh14/Multilevel_1D-TDSE.git   # Cloning the GitHub repo
+$ cd $Dir_path                                                     # Package directory
+$ nix build                                                        # Package build
+./results/bin/ML-TDSE input.ini                                    # Run with test input parameters (input.ini)
+```
+The further usage and test output are given in USAGE.md
+
 ### Installing Nix
 To install Nix, follow the instructions on the [Nix download](https://nixos.org/download/) page.
 
