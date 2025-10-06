@@ -1,0 +1,492 @@
+ reading input:
+ General Inputs from input.ini
+ Done reading input
+ _________________________
+ creating output directory output_data/
+ checking/creating time propagation output directory output_data/pulse_data/
+ checking/creating time propagation output directory output_data/nuclear_wavepacket_data/
+ checking/creating time propagation output directory output_data/time_prop/
+ Potential surfaces in path:input_data/H2+_BO.dat
+ Transitions to be switched off
+ Transition dipoles with file prefix \ \.
+ input_data/12.dat
+ output_data/12_read.out
+ R0=  0.18897266700000001      Rend=   56.557922400000002     
+ PR0=  -57.014526389947271      PRend=   56.903169893091906     
+ Printing input variables
+ Number of grid points: NR =        1024
+ Masses: m1 =   1836.1500000000001      m2 =   1836.1500000000001     
+ Time grid: dt =  0.20833333152242836      fs
+ Number of time steps: Nt =       50000 steps
+ Number of electronic states: Nstates =           2
+ Electronic potential kind: Elec_pot_kind =on_grid
+ Number of maximum considered vibrational states: guess_vstates =         100
+
+ Guess vibrational wavefunction (Gaussian): Initial position (RI) =  0.69999999999999996     
+ with initial width (kappa) =  -5.0000000000000000     
+
+
+ Input and Output Directories:
+ Input data directory:input_data/
+ Output data directory:output_data/
+ Transition Dipole switched off:           0
+
+ Absorber function: mask 
+
+ TDSE Initial State:
+ Mode:single vibrational state
+ electronic state(s)           0
+ vibrational state(s)           1
+ Gaussian Distribution TDSE:
+ centered at RI:    1.5000000000000000     
+ standard deviation:   -5.0000000000000000     
+
+ FFTW Parallelization:
+ TDSE Propagation FFTW: parallel
+ ITP FFTW: 
+
+ _________________________
+
+ Final grid Parameters
+ _________________________
+
+ dt =   0.208333328     a.u.
+ dR =    5.51016182E-02 a.u.
+ dPR =   0.111356497     a.u.
+ RI=  0.699999988     a.u.
+ R0=  0.188972667     a.u.Rend=   56.5579224     a.u.
+
+ kap =   1.0002722347752702     
+ lam =   0.0000000000000000     
+
+ __________________________
+
+ Laser parameters:
+ Laser #1:
+ Envelope shape:cos2
+ Lambda:   1030.0000000000000      nm
+ Electric field strength:  0.10000000000000001      a.u.
+ Pulse width (tp):   1666.6666521794268      fs
+ Pulse midpoint:   2499.9999782691402      fs
+ phi1:   0.0000000000000000      pi
+ Rise time:   0.0000000000000000      fs
+ Laser #2:
+ Envelope shape:trapazoidal
+ Lambda:   800.00000000000000      nm
+ Electric field strength:   0.0000000000000000      a.u.
+ Pulse width (tp):   0.0000000000000000      fs
+ Pulse midpoint:   0.0000000000000000      fs
+ phi2:   0.0000000000000000      pi
+ Rise time:   0.0000000000000000      fs
+ ------------------------------------------------------
+ Final pulse parameters:
+ Wavelength 1 =   1030.00000     nm
+ Phase 1 =   0.00000000    
+ Field strength =  0.100000001     a.u.   5.14220646E+10 V/m
+ Intensity =   3.50900002E+14 W/cm2
+ Wavelength 2 =   800.000000     nm
+ Phase 2 =   0.00000000    
+ Field strength =   0.00000000     a.u.   0.00000000     V/m
+ Intensity =   0.00000000     W/cm2
+ Wave duration =   40.0000000     fs
+ ------------------------------------------------------
+
+ FFTW intialization ...
+
+ number of threads found =           1
+ FFTW plan creation...
+
+ Done setting up FFTW.
+
+ reduced mass:   918.07500000000005     
+
+ Start of energy calculation...
+
+ output_data/nuclear_wavepacket_data/BO_Electronic-state-g0_vibstates.out  F
+ output_data/nuclear_wavepacket_data/BO_Electronic-state-g1_vibstates.out  F
+ Dp =  -13.624215477511600      eV
+ Surface           0 Vibrational state           0  -16.256173627552833      eV
+ Resonance freq for dissociation   2.6319581500412332      eV
+ Resonance freq for dissociation   471.07130704220685      nm
+ Surface           0 Vibrational state           1  -15.984037788105853      eV
+ Resonance freq for dissociation   2.3598223105942546      eV
+ Resonance freq for dissociation   525.39547586025401      nm
+ freq for the transition from           0 to           1 :   4555.9598777575775      nm E=  0.27213583944697861      eV
+ Surface           0 Vibrational state           2  -15.728359512801770      eV
+ Resonance freq for dissociation   2.1041440352901710      eV
+ Resonance freq for dissociation   589.23721238947076      nm
+ freq for the transition from           0 to           2 :   2349.0087346471778      nm E=  0.52781411475106199      eV
+ freq for the transition from           1 to           2 :   4849.2190599523792      nm E=  0.25567827530408332      eV
+ Surface           0 Vibrational state           3  -15.487528809327557      eV
+ Resonance freq for dissociation   1.8633133318159569      eV
+ Resonance freq for dissociation   665.39531738979360      nm
+ freq for the transition from           0 to           3 :   1613.0206519611731      nm E=  0.76864481822527619      eV
+ freq for the transition from           1 to           3 :   2497.1148938153019      nm E=  0.49650897877829753      eV
+ freq for the transition from           2 to           3 :   5148.1806428102000      nm E=  0.24083070347421418      eV
+ Surface           0 Vibrational state           4  -15.261346316700571      eV
+ Resonance freq for dissociation   1.6371308391889723      eV
+ Resonance freq for dissociation   757.32491022802060      nm
+ freq for the transition from           0 to           4 :   1246.2866190898510      nm E=  0.99482731085226084      eV
+ freq for the transition from           1 to           4 :   1715.5868235298651      nm E=  0.72269147140528223      eV
+ freq for the transition from           2 to           4 :   2654.8285491094493      nm E=  0.46701319610119885      eV
+ freq for the transition from           3 to           4 :   5481.5912205239947      nm E=  0.22618249262698470      eV
+ Surface           0 Vibrational state           5  -15.050411810552013      eV
+ Resonance freq for dissociation   1.4261963330404133      eV
+ Resonance freq for dissociation   869.33330082063810      nm
+ freq for the transition from           0 to           5 :   1028.2627533390116      nm E=   1.2057618170008197      eV
+ freq for the transition from           1 to           5 :   1327.9835776086386      nm E=  0.93362597755384114      eV
+ freq for the transition from           2 to           5 :   1828.8135820888908      nm E=  0.67794770224975787      eV
+ freq for the transition from           3 to           5 :   2836.4029980379719      nm E=  0.43711699877554366      eV
+ freq for the transition from           4 to           5 :   5877.8432626244003      nm E=  0.21093450614855896      eV
+ Surface           0 Vibrational state           6  -14.853233789766408      eV
+ Resonance freq for dissociation   1.2290183122548082      eV
+ Resonance freq for dissociation   1008.8051198729908      nm
+ freq for the transition from           0 to           6 :   883.74421513081188      nm E=   1.4029398377864248      eV
+ freq for the transition from           1 to           6 :   1096.4234010854070      nm E=   1.1308039983394462      eV
+ freq for the transition from           2 to           6 :   1416.7563964637479      nm E=  0.87512572303536285      eV
+ freq for the transition from           3 to           6 :   1954.6739728117743      nm E=  0.63429501956114864      eV
+ freq for the transition from           4 to           6 :   3037.9855652417191      nm E=  0.40811252693416400      eV
+ freq for the transition from           5 to           6 :   6287.9217515242808      nm E=  0.19717802078560501      eV
+ Surface           0 Vibrational state           7  -14.670177958768244      eV
+ Resonance freq for dissociation   1.0459624812566453      eV
+ Resonance freq for dissociation   1185.3579722388686      nm
+ freq for the transition from           0 to           7 :   781.74234029936019      nm E=   1.5859956687845878      eV
+ freq for the transition from           1 to           7 :   943.66228279114500      nm E=   1.3138598293376091      eV
+ freq for the transition from           2 to           7 :   1171.6703632702252      nm E=   1.0581815540335258      eV
+ freq for the transition from           3 to           7 :   1516.9005635363228      nm E=  0.81735085055931156      eV
+ freq for the transition from           4 to           7 :   2097.2705138630599      nm E=  0.59116835793232692      eV
+ freq for the transition from           5 to           7 :   3260.7301007101987      nm E=  0.38023385178376795      eV
+ freq for the transition from           6 to           7 :   6773.0154186279642      nm E=  0.18305583099816294      eV
+ Surface           0 Vibrational state           8  -14.500339496562615      eV
+ Resonance freq for dissociation  0.87612401905101578      eV
+ Resonance freq for dissociation   1415.1420790440832      nm
+ freq for the transition from           0 to           8 :   706.12590559513410      nm E=   1.7558341309902172      eV
+ freq for the transition from           1 to           8 :   835.64156735040660      nm E=   1.4836982915432386      eV
+ freq for the transition from           2 to           8 :   1009.6252092187847      nm E=   1.2280200162391552      eV
+ freq for the transition from           3 to           8 :   1255.9292830548802      nm E=  0.98718931276494115      eV
+ freq for the transition from           4 to           8 :   1629.2100583218851      nm E=  0.76100682013795651      eV
+ freq for the transition from           5 to           8 :   2253.9581329377907      nm E=  0.55007231398939749      eV
+ freq for the transition from           6 to           8 :   3513.3466017947726      nm E=  0.35289429320379251      eV
+ freq for the transition from           7 to           8 :   7300.1129998409515      nm E=  0.16983846220562956      eV
+ Surface           0 Vibrational state           9  -14.344640918672617      eV
+ Resonance freq for dissociation  0.72042544116101692      eV
+ Resonance freq for dissociation   1720.9830399967859      nm
+ freq for the transition from           0 to           9 :   648.61038477684008      nm E=   1.9115327088802163      eV
+ freq for the transition from           1 to           9 :   756.27810991791296      nm E=   1.6393968694332377      eV
+ freq for the transition from           2 to           9 :   896.02031155807947      nm E=   1.3837185941291543      eV
+ freq for the transition from           3 to           9 :   1084.8307834548964      nm E=   1.1428878906549400      eV
+ freq for the transition from           4 to           9 :   1352.4955438110151      nm E=  0.91670539802795536      eV
+ freq for the transition from           5 to           9 :   1756.7173428175029      nm E=  0.70577089187939646      eV
+ freq for the transition from           6 to           9 :   2437.7847907185260      nm E=  0.50859287109379137      eV
+ freq for the transition from           7 to           9 :   3808.5987556319310      nm E=  0.32553704009562845      eV
+ freq for the transition from           8 to           9 :   7963.0782928297504      nm E=  0.15569857788999891      eV
+ Surface           0 Vibrational state          10  -14.202873313164439      eV
+ Resonance freq for dissociation  0.57865783565283957      eV
+ Resonance freq for dissociation   2142.6132844490558      nm
+ freq for the transition from           0 to          10 :   603.82787511997117      nm E=   2.0533003143883937      eV
+ freq for the transition from           1 to          10 :   696.08392894827568      nm E=   1.7811644749414148      eV
+ freq for the transition from           2 to          10 :   812.75069293650222      nm E=   1.5254861996373315      eV
+ freq for the transition from           3 to          10 :   965.11474829115241      nm E=   1.2846554961631174      eV
+ freq for the transition from           4 to          10 :   1171.3477449857214      nm E=   1.0584730035361327      eV
+ freq for the transition from           5 to          10 :   1462.8715623443143      nm E=  0.84753849738757370      eV
+ freq for the transition from           6 to          10 :   1906.3888572969279      nm E=  0.65036047660196872      eV
+ freq for the transition from           7 to          10 :   2653.1727802926321      nm E=  0.46730464560380580      eV
+ freq for the transition from           8 to          10 :   4168.0030706573216      nm E=  0.29746618339817621      eV
+ freq for the transition from           9 to          10 :   8745.5802147183567      nm E=  0.14176760550817730      eV
+ Surface           0 Vibrational state          11  -14.075024763345834      eV
+ Resonance freq for dissociation  0.45080928583423341      eV
+ Resonance freq for dissociation   2750.2538318969159      nm
+ freq for the transition from           0 to          11 :   568.43436326895608      nm E=   2.1811488642069996      eV
+ freq for the transition from           1 to          11 :   649.46647809077717      nm E=   1.9090130247600210      eV
+ freq for the transition from           2 to          11 :   749.90256282238443      nm E=   1.6533347494559376      eV
+ freq for the transition from           3 to          11 :   877.76029339342142      nm E=   1.4125040459817235      eV
+ freq for the transition from           4 to          11 :   1045.1129057836231      nm E=   1.1863215533547389      eV
+ freq for the transition from           5 to          11 :   1271.1261333350799      nm E=  0.97538704720617986      eV
+ freq for the transition from           6 to          11 :   1593.1965882264826      nm E=  0.77820902642057488      eV
+ freq for the transition from           7 to          11 :   2083.2282769486469      nm E=  0.59515319542241196      eV
+ freq for the transition from           8 to          11 :   2915.1117254815804      nm E=  0.42531473321678237      eV
+ freq for the transition from           9 to          11 :   4598.5373699791344      nm E=  0.26961615532678346      eV
+ freq for the transition from          10 to          11 :   9697.7241242033651      nm E=  0.12784854981860613      eV
+ Surface           0 Vibrational state          12  -13.961391256643074      eV
+ Resonance freq for dissociation  0.33717577913147390      eV
+ Resonance freq for dissociation   3677.1323521932622      nm
+ freq for the transition from           0 to          12 :   540.28651323863096      nm E=   2.2947823709097590      eV
+ freq for the transition from           1 to          12 :   612.97905814698072      nm E=   2.0226465314627804      eV
+ freq for the transition from           2 to          12 :   701.67642316091406      nm E=   1.7669682561586972      eV
+ freq for the transition from           3 to          12 :   812.40381225101783      nm E=   1.5261375526844829      eV
+ freq for the transition from           4 to          12 :   953.75602120081999      nm E=   1.2999550600574983      eV
+ freq for the transition from           5 to          12 :   1138.4908773025641      nm E=   1.0890205539089393      eV
+ freq for the transition from           6 to          12 :   1390.2005340317774      nm E=  0.89184253312333439      eV
+ freq for the transition from           7 to          12 :   1749.2427017928976      nm E=  0.70878670212517136      eV
+ freq for the transition from           8 to          12 :   2300.4805916156342      nm E=  0.53894823991954188      eV
+ freq for the transition from           9 to          12 :   3235.0712568266763      nm E=  0.38324966202954297      eV
+ freq for the transition from          10 to          12 :   5134.2943806287112      nm E=  0.24148205652136565      eV
+ freq for the transition from          11 to          12 :   10910.866009472573      nm E=  0.11363350670275951      eV
+ Surface           0 Vibrational state          13  -13.862439293088903      eV
+ Resonance freq for dissociation  0.23822381557730385      eV
+ Resonance freq for dissociation   5204.5172847883605      nm
+ freq for the transition from           0 to          13 :   517.95220044665962      nm E=   2.3937343344639292      eV
+ freq for the transition from           1 to          13 :   584.38953870506339      nm E=   2.1215984950169506      eV
+ freq for the transition from           2 to          13 :   664.46568975553646      nm E=   1.8659202197128673      eV
+ freq for the transition from           3 to          13 :   762.93641269065654      nm E=   1.6250895162386532      eV
+ freq for the transition from           4 to          13 :   886.29190138692718      nm E=   1.3989070236116683      eV
+ freq for the transition from           5 to          13 :   1043.6604783315736      nm E=   1.1879725174631095      eV
+ freq for the transition from           6 to          13 :   1251.3593585531091      nm E=  0.99079449667750441      eV
+ freq for the transition from           7 to          13 :   1534.9518581948234      nm E=  0.80773866567934149      eV
+ freq for the transition from           8 to          13 :   1943.6268542770683      nm E=  0.63790020347371190      eV
+ freq for the transition from           9 to          13 :   2571.2065244895548      nm E=  0.48220162558371304      eV
+ freq for the transition from          10 to          13 :   3641.9390915902472      nm E=  0.34043402007553569      eV
+ freq for the transition from          11 to          13 :   5832.1952310374218      nm E=  0.21258547025692959      eV
+ freq for the transition from          12 to          13 :   12529.715644718630      nm E=   9.8951963554170075E-002 eV
+ Surface           0 Vibrational state          14  -13.778621239543719      eV
+ Resonance freq for dissociation  0.15440576203212023      eV
+ Resonance freq for dissociation   8029.7519309052404      nm
+ freq for the transition from           0 to          14 :   500.42936400493664      nm E=   2.4775523880091130      eV
+ freq for the transition from           1 to          14 :   562.17949694294759      nm E=   2.2054165485621344      eV
+ freq for the transition from           2 to          14 :   635.90071694521112      nm E=   1.9497382732580508      eV
+ freq for the transition from           3 to          14 :   725.51610616198650      nm E=   1.7089075697838367      eV
+ freq for the transition from           4 to          14 :   836.19005635065173      nm E=   1.4827250771568521      eV
+ freq for the transition from           5 to          14 :   974.87746338404622      nm E=   1.2717905710082931      eV
+ freq for the transition from           6 to          14 :   1153.7553377385971      nm E=   1.0746125502226880      eV
+ freq for the transition from           7 to          14 :   1390.6462024073171      nm E=  0.89155671922452506      eV
+ freq for the transition from           8 to          14 :   1717.9002384414557      nm E=  0.72171825701889558      eV
+ freq for the transition from           9 to          14 :   2190.4538155429937      nm E=  0.56601967912889661      eV
+ freq for the transition from          10 to          14 :   2922.4134492474573      nm E=  0.42425207362071932      eV
+ freq for the transition from          11 to          14 :   4182.9461064304423      nm E=  0.29640352380211321      eV
+ freq for the transition from          12 to          14 :   6783.6069914374193      nm E=  0.18277001709935370      eV
+ freq for the transition from          13 to          14 :   14792.039583118627      nm E=   8.3818053545183610E-002 eV
+ Surface           0 Vibrational state          15  -13.710485013385853      eV
+ Resonance freq for dissociation   8.6269535874253858E-002 eV
+ Resonance freq for dissociation   14371.700893667707      nm
+ freq for the transition from           0 to          15 :   487.03520097489337      nm E=   2.5456886141669792      eV
+ freq for the transition from           1 to          15 :   545.33150917202920      nm E=   2.2735527747200006      eV
+ freq for the transition from           2 to          15 :   614.42868036599384      nm E=   2.0178744994159175      eV
+ freq for the transition from           3 to          15 :   697.69803572189846      nm E=   1.7770437959417031      eV
+ freq for the transition from           4 to          15 :   799.45251272331859      nm E=   1.5508613033147185      eV
+ freq for the transition from           5 to          15 :   925.30425426409647      nm E=   1.3399267971661595      eV
+ freq for the transition from           6 to          15 :   1084.9628469936117      nm E=   1.1427487763805544      eV
+ freq for the transition from           7 to          15 :   1291.9131809667476      nm E=  0.95969294538239147      eV
+ freq for the transition from           8 to          15 :   1569.7068159108596      nm E=  0.78985448317676188      eV
+ freq for the transition from           9 to          15 :   1955.1027680798168      nm E=  0.63415590528676302      eV
+ freq for the transition from          10 to          15 :   2518.0126464780669      nm E=  0.49238829977858573      eV
+ freq for the transition from          11 to          15 :   3401.1104850881870      nm E=  0.36453974995997956      eV
+ freq for the transition from          12 to          15 :   4941.4472502753679      nm E=  0.25090624325722005      eV
+ freq for the transition from          13 to          15 :   8159.2961267245346      nm E=  0.15195427970305000      eV
+ freq for the transition from          14 to          15 :   18196.487180662149      nm E=   6.8136226157866381E-002 eV
+ Surface           0 Vibrational state          16  -13.658975868643349      eV
+ Resonance freq for dissociation   3.4760391131749453E-002 eV
+ Resonance freq for dissociation   35668.182245736214      nm
+ freq for the transition from           0 to          16 :   477.37603406099458      nm E=   2.5971977589094837      eV
+ freq for the transition from           1 to          16 :   533.25029989176880      nm E=   2.3250619194625051      eV
+ freq for the transition from           2 to          16 :   599.13490150567588      nm E=   2.0693836441584215      eV
+ freq for the transition from           3 to          16 :   678.04433671818629      nm E=   1.8285529406842076      eV
+ freq for the transition from           4 to          16 :   773.75363938067096      nm E=   1.6023704480572227      eV
+ freq for the transition from           5 to          16 :   891.05069696532075      nm E=   1.3914359419086639      eV
+ freq for the transition from           6 to          16 :   1038.1676720673447      nm E=   1.1942579211230588      eV
+ freq for the transition from           7 to          16 :   1226.1050268074277      nm E=   1.0112020901248959      eV
+ freq for the transition from           8 to          16 :   1473.6077537443564      nm E=  0.84136362791926633      eV
+ freq for the transition from           9 to          16 :   1808.2297847431341      nm E=  0.68566505002926736      eV
+ freq for the transition from          10 to          16 :   2279.5473270002403      nm E=  0.54389744452109012      eV
+ freq for the transition from          11 to          16 :   2980.0342738728355      nm E=  0.41604889470248396      eV
+ freq for the transition from          12 to          16 :   4099.7912639995757      nm E=  0.30241538799972445      eV
+ freq for the transition from          13 to          16 :   6093.6749157688846      nm E=  0.20346342444555440      eV
+ freq for the transition from          14 to          16 :   10362.623781347400      nm E=  0.11964537090037079      eV
+ freq for the transition from          15 to          16 :   24070.288334591958      nm E=   5.1509144742504405E-002 eV
+ Surface           0 Vibrational state          17  -13.624943361417680      eV
+ Resonance freq for dissociation   7.2788390608016838E-004 eV
+ Resonance freq for dissociation   1703348.5085515243      nm
+ freq for the transition from           0 to          17 :   471.20162069336283      nm E=   2.6312302661351530      eV
+ freq for the transition from           1 to          17 :   525.55758336509984      nm E=   2.3590944266881744      eV
+ freq for the transition from           2 to          17 :   589.44111701551424      nm E=   2.1034161513840908      eV
+ freq for the transition from           3 to          17 :   665.65534870446572      nm E=   1.8625854479098767      eV
+ freq for the transition from           4 to          17 :   757.66177384223556      nm E=   1.6364029552828920      eV
+ freq for the transition from           5 to          17 :   869.77720662512729      nm E=   1.4254684491343330      eV
+ freq for the transition from           6 to          17 :   1009.4029369642741      nm E=   1.2282904283487281      eV
+ freq for the transition from           7 to          17 :   1186.1834357215387      nm E=   1.0452345973505652      eV
+ freq for the transition from           8 to          17 :   1416.3187567820796      nm E=  0.87539613514493564      eV
+ freq for the transition from           9 to          17 :   1722.7235987145739      nm E=  0.71969755725493667      eV
+ freq for the transition from          10 to          17 :   2145.3118359291966      nm E=  0.57792995174675943      eV
+ freq for the transition from          11 to          17 :   2754.7016173270558      nm E=  0.45008140192815327      eV
+ freq for the transition from          12 to          17 :   3685.0875972629187      nm E=  0.33644789522539376      eV
+ freq for the transition from          13 to          17 :   5220.4682290586725      nm E=  0.23749593167122368      eV
+ freq for the transition from          14 to          17 :   8067.7842571684159      nm E=  0.15367787812604006      eV
+ freq for the transition from          15 to          17 :   14493.991374887204      nm E=   8.5541651968173690E-002 eV
+ freq for the transition from          16 to          17 :   36431.049807730698      nm E=   3.4032507225669285E-002 eV
+ Surface           0 Vibrational state          18  -13.620170428043632      eV
+ Resonance freq for dissociation  -4.0450494679667029E-003 eV
+ Resonance freq for dissociation  -306507.98603052297      nm
+ freq for the transition from           0 to          18 :   470.34842979369660      nm E=   2.6360031995091999      eV
+ freq for the transition from           1 to          18 :   524.49641920165845      nm E=   2.3638673600622213      eV
+ freq for the transition from           2 to          18 :   588.10662420375513      nm E=   2.1081890847581377      eV
+ freq for the transition from           3 to          18 :   663.95394598429812      nm E=   1.8673583812839236      eV
+ freq for the transition from           4 to          18 :   755.45831156155919      nm E=   1.6411758886569390      eV
+ freq for the transition from           5 to          18 :   866.87462758619222      nm E=   1.4302413825083800      eV
+ freq for the transition from           6 to          18 :   1005.4957468593255      nm E=   1.2330633617227751      eV
+ freq for the transition from           7 to          18 :   1180.7914986711542      nm E=   1.0500075307246119      eV
+ freq for the transition from           8 to          18 :   1408.6384197828386      nm E=  0.88016906851898247      eV
+ freq for the transition from           9 to          18 :   1711.3740060604625      nm E=  0.72447049062898361      eV
+ freq for the transition from          10 to          18 :   2127.7395349831986      nm E=  0.58270288512080626      eV
+ freq for the transition from          11 to          18 :   2725.7956439979330      nm E=  0.45485433530220015      eV
+ freq for the transition from          12 to          18 :   3633.5412785594090      nm E=  0.34122082859944064      eV
+ freq for the transition from          13 to          18 :   5117.6199037735823      nm E=  0.24226886504527056      eV
+ freq for the transition from          14 to          18 :   7824.7624867458135      nm E=  0.15845081150008694      eV
+ freq for the transition from          15 to          18 :   13728.014817565774      nm E=   9.0314585342220560E-002 eV
+ freq for the transition from          16 to          18 :   31950.158190688893      nm E=   3.8805440599716155E-002 eV
+ freq for the transition from          17 to          18 :   259764.77538153392      nm E=   4.7729333740468716E-003 eV
+ Number of bound vibrational states in the            0  electronic state:          18
+ Dp =  -13.624215477511600      eV
+ Surface           1 Vibrational state           0  -13.620170068149093      eV
+ Resonance freq for dissociation  -4.0454093625058030E-003 eV
+ Resonance freq for dissociation  -306480.71794947650      nm
+ Number of bound vibrational states in the            1  electronic state:           0
+
+ Cleaning up nuclear_wp variables ...
+ Done
+ Leaving vibrational state calculations ...
+
+ Pulse generation...
+ Pulse generation complete.
+ Done writing field information in the files.
+
+ Time dependent calcuations
+ Preparing time propagation ...
+ Status of output_data/nuclear_wavepacket_data/Bound-vibstates_in_Nthstates.out checked
+
+ Reading vibrational states in the Electronic state            0
+
+ Status of output_data/nuclear_wavepacket_data/BO_Electronic-state-g0_Evib.out checked
+ Status of output_data/nuclear_wavepacket_data/BO_Electronic-state-g0_vibstates.out checked
+ NR:        1024 Vstates(N)          18
+
+ Reading vibrational states in the Electronic state            1
+
+ Status of output_data/nuclear_wavepacket_data/BO_Electronic-state-g1_Evib.out checked
+ Status of output_data/nuclear_wavepacket_data/BO_Electronic-state-g1_vibstates.out checked
+ NR:        1024 Vstates(N)           0
+ Done reading the vbrational states files
+
+ Initial wavefunction:
+ initial wavefunction is in...
+           0 electronic state and in           1 vibrational state
+ Wavefunction initialized.
+
+ Absorber placed around the number of grid points from the end of the grid:
+ i_cpmR =         180 , NR-i_cpmR         844
+ R(NR-i_cpmR) =   46.639633199999999     
+ Done setting up the absorber.
+
+ FFTW intialization ...
+
+ number of threads found =           1
+ FFTW plan creation ...
+ Done setting up FFTW.
+
+ Setting openmp threads for matrix operations ...
+ Number of openmp threads (if not speciefied then maximum available):           4
+ Done  setting up Openmp threads.
+
+ 1D time evolution...
+
+Progress: time step #1000, time: 5.00 fs
+Progress: time step #2000, time:10.00 fs
+Progress: time step #3000, time:15.00 fs
+Progress: time step #4000, time:20.00 fs
+Progress: time step #5000, time:25.00 fs
+Progress: time step #6000, time:30.00 fs
+Progress: time step #7000, time:35.00 fs
+Progress: time step #8000, time:40.00 fs
+Progress: time step #9000, time:45.00 fs
+Progress: time step #10000, time:50.00 fs
+Progress: time step #11000, time:55.00 fs
+Progress: time step #12000, time:60.00 fs
+Progress: time step #13000, time:65.00 fs
+Progress: time step #14000, time:70.00 fs
+Progress: time step #15000, time:75.00 fs
+Progress: time step #16000, time:80.00 fs
+Progress: time step #17000, time:85.00 fs
+Progress: time step #18000, time:90.00 fs
+Progress: time step #19000, time:95.00 fs
+Progress: time step #20000, time:100.00 fs
+Progress: time step #21000, time:105.00 fs
+Progress: time step #22000, time:110.00 fs
+Progress: time step #23000, time:115.00 fs
+Progress: time step #24000, time:120.00 fs
+Progress: time step #25000, time:125.00 fs
+Progress: time step #26000, time:130.00 fs
+Progress: time step #27000, time:135.00 fs
+Progress: time step #28000, time:140.00 fs
+Progress: time step #29000, time:145.00 fs
+Progress: time step #30000, time:150.00 fs
+Progress: time step #31000, time:155.00 fs
+Progress: time step #32000, time:160.00 fs
+Progress: time step #33000, time:165.00 fs
+Progress: time step #34000, time:170.00 fs
+Progress: time step #35000, time:175.00 fs
+Progress: time step #36000, time:180.00 fs
+Progress: time step #37000, time:185.00 fs
+Progress: time step #38000, time:190.00 fs
+Progress: time step #39000, time:195.00 fs
+Progress: time step #40000, time:200.00 fs
+Progress: time step #41000, time:205.00 fs
+Progress: time step #42000, time:210.00 fs
+Progress: time step #43000, time:215.00 fs
+Progress: time step #44000, time:220.00 fs
+Progress: time step #45000, time:225.00 fs
+Progress: time step #46000, time:230.00 fs
+Progress: time step #47000, time:235.00 fs
+Progress: time step #48000, time:240.00 fs
+Progress: time step #49000, time:245.00 fs
+Progress: time step #50000, time:250.00 fs
+
+ Post-propagation analysis...
+
+ FFTW intialization ...
+
+ number of threads found =           1
+ FFTW plan creation ...
+ Done setting up FFTW.
+
+ Final vibrational population in the elec. state           0
+ Number of vibrational states:          18
+ Vibpop (           0 ) =   3.7467664871328231E-003
+ Vibpop (           1 ) =  0.63443917443608033     
+ Vibpop (           2 ) =   6.8211581327256202E-002
+ Vibpop (           3 ) =   1.5543912183992283E-002
+ Vibpop (           4 ) =   4.7425752748416188E-003
+ Vibpop (           5 ) =   1.7401068383749894E-003
+ Vibpop (           6 ) =   9.0350294802941933E-004
+ Vibpop (           7 ) =   3.6329952594588415E-004
+ Vibpop (           8 ) =   1.9009530598637869E-004
+ Vibpop (           9 ) =   9.6720299315587190E-005
+ Vibpop (          10 ) =   4.9488514758299799E-005
+ Vibpop (          11 ) =   2.6158288292384125E-005
+ Vibpop (          12 ) =   1.1522461153810125E-005
+ Vibpop (          13 ) =   5.3957512034387836E-006
+ Vibpop (          14 ) =   3.0277529506057351E-006
+ Vibpop (          15 ) =   1.3963441973868101E-006
+ Vibpop (          16 ) =   7.0913711001706322E-007
+ Vibpop (          17 ) =   4.1455270191339604E-007
+ Total population in state           0 :  0.73009018038421114     
+ Bound population in state           0 :  0.73007584970890560     
+ Unbound population in state           0 :   1.4335234471595106E-005
+ Unbound population reached to the absorber in state           0 :   2.8320081083261832E-002
+ Calculating KER spectra in state            0
+ Writing KER spectra in state            0
+
+ Final vibrational population in the elec. state           1
+ Number of vibrational states:           0
+ Total population in state           1 :   6.4256022425255243E-004
+ Bound population in state           1 :   0.0000000000000000     
+ Unbound population in state           1 :   6.4256022425255243E-004
+ Unbound population reached to the absorber in state           1 :  0.23930552835978056     
+ Calculating KER spectra in state            1
+ Writing KER spectra in state            1
+
+ Cleaning up time propagation variables ...
+ Done.
+
+ Cleaning up pulse variables ...
+ Done
+
+ CPU time elapsed:    323.85430200000002       seconds
+ System clock time elapsed:    167.32200000000000       seconds

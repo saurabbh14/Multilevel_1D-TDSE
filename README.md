@@ -90,5 +90,5 @@ Currently, there are two flavours of GUIs. We recommend to use the gui based in 
 python3 $Dir_path/tools/pyqt_gui.py
 ```
 
-For more information about the GUI user guide check [GUI_DOC.md](./documentation/GUI_DOC.md)
+For more information about the GUI user guide check [`GUI_DOC.md`](./documentation/GUI_DOC.md)
 

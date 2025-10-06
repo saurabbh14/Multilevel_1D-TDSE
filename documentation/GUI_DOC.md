@@ -18,7 +18,7 @@ Run:
 python3 tools/pyqt_gui.py
 ``` 
 You should see something like this
-![image](tools/pyqt_gui_snaps/pyqt_gui_startup_snap.png)
+![image](../tools/pyqt_gui_snaps/pyqt_gui_startup_snap.png)
 
 
 ## 3. Main Features
