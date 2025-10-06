@@ -47,7 +47,7 @@ Further output files from these calcuations such vibartional eigen energies and 
 
 ## Time propagation calculations
 
-In this case the outfiles are stored in `output_data/time_prop`. Out of the many generated data files, it would be sufficient to check norm of the bound wavefunction over time for the start. We can plot the data from `norm_1d.out`. Only two columns: time(fs), norm $`\rangle \psi | \psi \langle`$ (arbitrary units).
+In this case the outfiles are stored in `output_data/time_prop`. Out of the many generated data files, it would be sufficient to check norm of the bound wavefunction over time for the start. We can plot the data from `norm_1d.out`. Only two columns: time(fs), norm $`\langle \psi | \psi \rangle`$ (arbitrary units).
 
 ![image](figs/time_prop_norm.png)
 
