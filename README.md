@@ -14,7 +14,7 @@ This package has only been tested on Linux systems (Ubuntu/Debian). The distribu
 If you have a working Nix installation with nix flakes turned on (see below), then you may use the following commands to quickly build and run the package.
 ```
 $ git clone https://github.com/saurabbh14/Multilevel_1D-TDSE.git   # Cloning the GitHub repo
-$ cd $Dir_path                                                     # Package directory
+$ cd Multilevel_1D-TDSE                                            # Package directory
 $ nix build                                                        # Package build
 $ ./results/bin/ML-TDSE input.ini                                  # Run with test input parameters (input.ini)
 ```
@@ -42,7 +42,7 @@ Navigate to the directory where you have cloned or unzipped the git repo.
 $ cd $Dir_path
 ```
 
-Once in the directory, just run the following command
+Usually `$Dir_path = Multilevel_1D-TDSE`. Once in the directory, just run the following command
 ```
 $ nix build
 ```
@@ -55,7 +55,7 @@ To run the test calculations, you can use the provided input file for the H2+ mo
 $ ./results/bin/ML-TDSE input.ini
 ```  
 
-For more in depth documentation of the package is given in [`DOCUMENTATION.md`](./DOCUMENTATION.md) file and for some usage examples are listed in [`USAGE.md`](./USAGE.md) file. 
+For more in depth documentation of the package is given in [`DOCUMENTATION.md`](./documentation/DOCUMENTATION.md) file and for some usage examples are listed in [`USAGE.md`](./documentation/USAGE.md) file. 
 
 ## Graphical User Interface (GUI)
 
@@ -90,5 +90,5 @@ Currently, there are two flavours of GUIs. We recommend to use the gui based in 
 python3 $Dir_path/tools/pyqt_gui.py
 ```
 
-For more information about the GUI user guide check [GUI_DOC.md]
+For more information about the GUI user guide check [GUI_DOC.md](./documentation/GUI_DOC.md)
 
