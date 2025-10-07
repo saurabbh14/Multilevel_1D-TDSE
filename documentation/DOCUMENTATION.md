@@ -53,14 +53,14 @@ See [`documentation/GUI_DOC.md`](GUI_DOC.md) for a short GUI guide.
 
 - Source:
   - [`src/main.f90`](../src/main.f90) — program entry and initialization
-  - [`src/initializer.f90`](../src/initializer.f90)
+  - [`src/processes/initializer.f90`](../src/processes/initializer.f90)
   - [`src/nuclear_wv.f90`](../src/nuclear_wv.f90)
   - [`src/propagation.f90`](../src/propagation.f90)
-  - [`src/pulse_gen/pulse.f90`](../src/pulse_gen/pulse.f90)
+  - [`src/processes/pulse_gen.f90`](../src/processes/pulse_gen.f90)
   - IO & helpers:
     - [`src/IO_modules/`](../src/IO_modules/) — input parsing, variables, FFTW wrapper, etc.
-    - [`src/fft/fftw3.f90`](../src/fft/fftw3.f90)
-    - [`src/blas_module/`](../src/blas_module/)
+    - [`src/libs/fftw3.f90`](../src/libs/fftw3.f90)
+    - [`src/libs/`](../src/libs/)
 
 ## Inputs
 
@@ -87,7 +87,7 @@ The code uses Fortran namelist-style `input.ini`. See [`documentation/USAGE.md`]
 
 ## Where to look to change behavior
 
-- Pulse shapes and IO: [`src/pulse_gen/pulse.f90`](../src/pulse_gen/pulse.f90)
+- Pulse shapes and IO: [`src/processes/pulse_gen.f90`](../src/processes/pulse_gen.f90)
 - Potentials / dipoles read logic: [`src/main.f90`](../src/main.f90) (`pot_read`, `trans_dipole_read`)
 - Propagation / observables: [`src/propagation.f90`](../src/propagation.f90)
 - Input parsing and shared variables: [`src/IO_modules/`](../src/IO_modules/)
