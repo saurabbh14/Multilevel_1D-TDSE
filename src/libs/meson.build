@@ -1,1 +1,1 @@
-lib_sources = files('blas_interface.f03', fftw3.f90, timeit.f90)
+libs_sources = files('blas_interface.f03', 'fftw3.f90', 'timeit.f90')

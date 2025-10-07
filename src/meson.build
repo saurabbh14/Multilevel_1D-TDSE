@@ -15,7 +15,6 @@ prog_sources = files('main.f90',
            'propagation.f90')
 
 incdir = include_directories('IO_modules', 
-                    'pulse_gen',
                     'libs',
                     'processes')
 executable('ML-TDSE',
