@@ -47,14 +47,6 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Build static site (Markdown to HTML)
-        run: |
-          mkdir _site
-          cp README.md _site/index.md
-          echo "<html><body>" > _site/index.html
-          cat README.md | sed 's/^# \(.*\)$/<h1>\1<\/h1>/' >> _site/index.html
-          echo "</body></html>" >> _site/index.html
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
