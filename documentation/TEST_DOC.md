@@ -7,6 +7,8 @@ $ ./results/bin/ML-TDSE input.ini                                  # Run with te
 ```
 After the calculation is complete, the output data will be stored in `output_data` directory. Here are some plots of the generated data after the test.
 
+**NOTE:** If you encounter any anomolous results or behaviour while execution/run, we suggest to remove the entire output directory (`rm -r output_data/`) and start a new run again.
+
 ## Potential Energy Surfaces Check
 First, let's see what were the input potetial surfaces. We plot the data in `output_data/H2+_BO.dat_read.out`. There are three columns: R(a.u.), Ground state g0(a.u.), First Excited state g1(a.u). 
 
@@ -47,7 +49,6 @@ Further output files from these calcuations such vibartional eigen energies and 
 
 ## Time propagation calculations
 
-In this case the outfiles are stored in `output_data/time_prop`. Out of the many generated data files, it would be sufficient to check norm of the bound wavefunction over time for the start. We can plot the data from `norm_1d.out`. Only two columns: time(fs), norm $`\langle \psi | \psi \rangle`$ (arbitrary units).
+In this case the outfiles are stored in `output_data/time_prop`. Out of the many generated data files, it would be sufficient to check norm of the bound wavefunction over time at the start. We can plot the data from `norm_1d.out`. Only two columns: time(fs), norm $`\langle \psi | \psi \rangle`$ (arbitrary units).
 
 ![image](figs/time_prop_norm.png)
-
