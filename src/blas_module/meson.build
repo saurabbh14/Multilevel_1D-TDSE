@@ -1,1 +1,0 @@
-blas_mod_sources = files('blas_interface.f03')

@@ -8,28 +8,20 @@ fftw3_omp = declare_dependency(
 )
 
 subdir('IO_modules')
-subdir('pulse_gen')
-subdir('fft')
-subdir('performance_modules')
-subdir('blas_module')
-subdir('propagator')
+subdir('libs')
+subdir('processes')
 prog_sources = files('main.f90',
            'nuclear_wv.f90',
-           'propagation.f90',
-           'initializer.f90')
+           'propagation.f90')
 
 incdir = include_directories('IO_modules', 
                     'pulse_gen',
-                    'fft',
-                    'propagator')
+                    'libs',
+                    'processes')
 executable('ML-TDSE',
             IO_mod_sources
-            + fft_mod_sources
-            + performance_mod_sources
-            + blas_mod_sources
-            + pulse_mod_sources 
-            + propagator_mod_sources
-            + prog_sources,
+            + libs_sources
+            + processes_sources,
            dependencies: [ blas, lapack, omp, fftw3, fftw3_omp ],
            install : true,
            include_directories : incdir
