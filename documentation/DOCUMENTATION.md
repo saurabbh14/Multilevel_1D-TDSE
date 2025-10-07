@@ -1,111 +1,191 @@
-# Multi-level 1D TDSE solver — Concise Documentation
+# Multi-level 1D TDSE solver — Documentation (updated)
 
-This document summarizes the repository layout, build & run steps, the main modules/routines, and the important input/output artifacts.
+This document summarizes the repository layout, how to build and run the code (CLI and GUI), where to find important modules, and the main input / output artifacts.
 
-## Quick start
+## Quick start — command line
 
-- Build (Nix as used by the project):
-  - From project root run:
-    ```
-    nix build
-    ```
-  - The executable is produced at `result/bin/ML-TDSE` (see [meson.build](../meson.build) and [src/meson.build](src/meson.build)).
+- Build (Nix):
+  ```
+  nix build
+  ```
+  Executable: `result/bin/ML-TDSE`
 
-- Run: `./result/bin/ML-TDSE input.ini`
+- Run (CLI):
+  ```
+  ./result/bin/ML-TDSE input.ini
+  ```
+  Use the provided [`input.ini`](../input.ini) at project root as a template.
 
-- Example input template: [input.ini](../input.ini)
-- Top-level README: [README.md](../README.md)
+## Quick start — GUI
 
-## High-level workflow
+A development PySide6 GUI is provided to edit `input.ini`, build, run simulations, view run logs and plot outputs interactively.
 
-1. Parse command line and read `input.ini`:
- - Command-line handling: [`CommandLineModule.CommandLine`](../src/input_modules/commandlinemodule.f90) ([file](../src/input_modules/commandlinemodule.f90))
- - Input file reading: [`ReadInputFile.InputFilePath`](../src/input_modules/readinputmodule.f90) ([file](../src/input_modules/readinputmodule.f90))
+- Install Python deps (recommended inside a venv):
+  ```
+  python3 -m pip install -r tools/requirements_pyqt.txt
+  ```
+  See: [`tools/requirements_pyqt.txt`](../tools/requirements_pyqt.txt)
 
-2. Initialize grids, potentials and dipoles:
- - Main program entry: [`main.TDSE_main`](../src/main.f90) ([file](../src/main.f90))
- - Initializers and grid helpers: [`main.initializer`](../src/main.f90), [`main.p_grid`](../src/main.f90)
- - Potential read / prefix handling: [`main.pot_read`](../src/main.f90), [`main.trans_dipole_read`](../src/main.f90)
- - Optional Morse potential helper: [`main.morse_potential`](../src/main.f90)
+- Launch GUI:
+  ```
+  python3 tools/pyqt_gui.py
+  ```
+  GUI script: [`tools/pyqt_gui.py`](../tools/pyqt_gui.py)
 
-3. Compute bound vibrational states (imaginary-time propagation):
- - Vibrational eigenstates generator: [`nuclear_wv.nuclear_wavefkt`](../src/nuclear_wv.f90) ([file](../src/nuclear_wv.f90))
+- Features:
+  - Raw editor + quick fields for common parameters
+  - Build (nix build), Run, Stop controls
+  - Runtime log viewer; logs are saved to `run_logs/run_log_N.txt` after each run (see [`run_logs/`](../run_logs/))
+  - Interactive matplotlib plot (zoom/pan) with live updates (plots a selected output file periodically once it is created)
+  - File chooser to select any output file to plot
 
-4. Generate laser pulses:
- - Pulse type and generation object: [`pulse_mod.pulse_param`](../src/input_modules/pulse.f90) ([file](../src/input_modules/pulse.f90))
+See [`documentation/GUI_DOC.md`](GUI_DOC.md) for a short GUI guide.
 
-5. Real-time propagation & observables:
- - Propagation driver: [`propagation.propagation_1D`](../src/propagation.f90) ([file](../src/propagation.f90))
- - FFTW integration: [`FFTW3` module](../src/input_modules/fftw3.f90) ([file](../src/input_modules/fftw3.f90))
+## Project layout (important files)
 
-6. Outputs: many `.out` files are written into the configured `output_data_dir` (see `input.ini`).
+- Top-level:
+  - [`input.ini`](../input.ini) — example input
+  - [`README.md`](../README.md) — project overview
+  - [`documentation/USAGE.md`](USAGE.md) — input parameter reference and quick examples
+  - [`documentation/GUI_DOC.md`](GUI_DOC.md) — GUI quick guide
+  - [`tools/pyqt_gui.py`](../tools/pyqt_gui.py) — PySide6 GUI
+  - [`tools/requirements_pyqt.txt`](../tools/requirements_pyqt.txt) — GUI Python requirements
 
-## Important files & symbols (openable)
+- Source:
+  - [`src/main.f90`](../src/main.f90) — program entry and initialization
+  - [`src/initializer.f90`](../src/initializer.f90)
+  - [`src/nuclear_wv.f90`](../src/nuclear_wv.f90)
+  - [`src/propagation.f90`](../src/propagation.f90)
+  - [`src/pulse_gen/pulse.f90`](../src/pulse_gen/pulse.f90)
+  - IO & helpers:
+    - [`src/IO_modules/`](../src/IO_modules/) — input parsing, variables, FFTW wrapper, etc.
+    - [`src/fft/fftw3.f90`](../src/fft/fftw3.f90)
+    - [`src/blas_module/`](../src/blas_module/)
 
-- Project root:
-- [README.md](../README.md)
-- [input.ini](../input.ini)
-- [meson.build](../meson.build)
+## Inputs
 
-- Build config:
-- [src/meson.build](../src/meson.build)
+The code uses Fortran namelist-style `input.ini`. See [`documentation/USAGE.md`](USAGE.md) for a detailed description of sections and parameters (grid, masses, time grid, electronic states, vibrational state options, laser pulses, absorber, output directory, parallelization flags).
 
-- Main program and helpers:
-- [`main.TDSE_main`](../src/main.f90) — program entry ([file](../src/main.f90))
-- [`main.initializer`](../src/main.f90) — creates output dirs, allocates grids ([file](../src/main.f90))
-- [`main.p_grid`](../src/main.f90) — momentum grid ([file](../src/main.f90))
-- [`main.pot_read`](../src/main.f90) — read adiabatic potentials ([file](../src/main.f90))
-- [`main.trans_dipole_read`](../src/main.f90) — read transition dipoles ([file](../src/main.f90))
-- [`main.morse_potential`](../src/main.f90) — helper potential ([file](../src/main.f90))
+## Outputs
 
-- Nuclear / vibrational routines:
-- [`nuclear_wv.nuclear_wavefkt`](../src/nuclear_wv.f90) — computes vibrational states (ITP) ([file](../src/nuclear_wv.f90))
-- Helpers in that file: `eigenvalue_R`, `integ_r`, FFTW plan setup in ITP
+- All outputs are written to the directory specified by `output_data_dir` in `input.ini`. Typical files:
+  - `density_1d.out`, `Pdensity_1d.out`, `avgR_1d.out`, `norm_1d.out`
+  - KER & momentum spectra: `KER_spectra_...`, `momt_spectra_...`
+  - Nuclear/vibrational data in `output_data/nuclear_wavepacket_data/...`
+- GUI live plotting watches the selected output file (relative to `output_data_dir`) and updates the figure periodically after the file appears.
 
-- Propagation & observables:
-- [`propagation.propagation_1D`](../src/propagation.f90) — main real-time TDSE loop, absorbers, KER/momentum spectra ([file](../src/propagation.f90))
-- Absorber and mask functions: `complex_absorber_function`, `mask_function_cos`, `mask_function_ex`
-- BLAS/LAPACK interfaces and calls are in [src/propagation.f90](../src/propagation.f90) (see `blas_interfaces_module`)
+## Parallelization / performance
 
-- Pulse / field handling:
-- [`pulse_mod.pulse_param`](../src/input_modules/pulse.f90) — read, initialize, generate and write pulses (envelopes, spectra) ([file](../src/input_modules/pulse.f90))
-
-- Input & variables modules:
-- [`VarPrecision`](../src/input_modules/variablesmodule.f90) — precision and type aliases ([file](../src/input_modules/variablesmodule.f90))
-- [`InputVars` / `global_vars`](../src/input_modules/variablesmodule.f90) — main shared simulation variables and allocatables ([file](../src/input_modules/variablesmodule.f90))
-
-- FFTW wrapper:
-- [`FFTW3` module](../src/input_modules/fftw3.f90) — includes FFTW Fortran bindings ([file](../src/input_modules/fftw3.f90))
-
-## Input (input.ini)
-- The code uses Fortran namelists read by `ReadInputFile`:
-- Grid: NR, R0/Rend derived from adb or config
-- Time grid: dt, Nt
-- Electronic states: Nstates, Elec_pot_kind
-- Vibrational options: guess_vstates, initial distribution params
-- Laser params: read into `pulse_mod.pulse_param` via `pulse_mod%read`
-- See [input.ini](../input.ini) for a runnable example.
-
-## Typical outputs (examples)
-- Vibrational states and energies:
-- BO electronic-state files: `BO_Electronic-state-g##_vibstates.out` (written by `nuclear_wv`)
-- Bound-state wavefunctions: `BO_Electronic-state-g##_chi0-Evib.out`
-- Propagation outputs (written by `propagation_1D`):
-- `density_1d.out`, `Pdensity_1d.out`, `avgR_1d.out`, `avgPR_1d.out`, `norm_1d.out`
-- KER and momentum spectra: `KER_spectra_from_state_g##_unnormalized.out`, `momt_spectra_from_state_g##_unnormalized.out`
-- Pulse/pulse spectra written by `pulse_mod` into `output_data_dir/pulse_data/`
-
-## Parallelization / performance notes
-- FFTW threading is used optionally:
-- ITP and TDSE propagation threads are selectable via namelist fields `ITP_par_FFTW` and `prop_par_FFTW` (see [src/input_modules/readinputmodule.f90](../src/input_modules/readinputmodule.f90)).
-- FFTW init & plan code appears in both [`nuclear_wv.nuclear_wavefkt`](../src/nuclear_wv.f90) and [`propagation.propagation_1D`](../src/propagation.f90).
-- BLAS/LAPACK dependencies are declared in [src/meson.build](../src/meson.build).
-
-## Where to look for changes / extension points
-- Change pulse shapes & spectra: [src/input_modules/pulse.f90](../src/input_modules/pulse.f90) — the `pulse_param` type and its methods.
-- Add/modify potentials or dipoles: [src/main.f90](../src/main.f90) (`pot_read`, `trans_dipole_read`) and the `adb` / `mu_all` arrays defined in [src/input_modules/variablesmodule.f90](../src/input_modules/variablesmodule.f90).
-- Modify propagation/observables: [src/propagation.f90](../src/propagation.f90) — main loop, absorbers, spectra writers.
+- FFTW threading can be controlled via `prop_par_FFTW` and `ITP_par_FFTW` namelists.
+- OpenMP / threaded BLAS behavior depends on your build and environment variables (see [`src/meson.build`](../src/meson.build) and meson configuration).
 
 ## Tests / verification
-- There is a test input for H2+ referenced in the top-level README. Run the executable with that `input.ini` and inspect the produced `output_data_dir` files.
-- Useful debug prints are present across modules (normalization, energies, run-time).
+
+- Use provided `input.ini` for the H2+ test case.
+- After a run, compare produced files in the `output_data_dir` and check saved run logs in [`run_logs/`](../run_logs/).
+- See [`documentation/TEST_DOC.md`](TEST_DOC.md) for test notes (if present).
+
+## Where to look to change behavior
+
+- Pulse shapes and IO: [`src/pulse_gen/pulse.f90`](../src/pulse_gen/pulse.f90)
+- Potentials / dipoles read logic: [`src/main.f90`](../src/main.f90) (`pot_read`, `trans_dipole_read`)
+- Propagation / observables: [`src/propagation.f90`](../src/propagation.f90)
+- Input parsing and shared variables: [`src/IO_modules/`](../src/IO_modules/)
+
+If you want, the GUI can be extended to validate parameters, present tooltips, or plot multiple files simultaneously — open an issue or request specific enhancements.
+```// filepath: /home/saurabh/Saurabh/TDSE_1D/documentation/DOCUMENTATION.md
+# Multi-level 1D TDSE solver — Documentation (updated)
+
+This document summarizes the repository layout, how to build and run the code (CLI and GUI), where to find important modules, and the main input / output artifacts.
+
+## Quick start — command line
+
+- Build (Nix):
+  ```
+  nix build
+  ```
+  Executable: `result/bin/ML-TDSE`
+
+- Run (CLI):
+  ```
+  ./result/bin/ML-TDSE input.ini
+  ```
+  Use the provided [`input.ini`](../input.ini) at project root as a template.
+
+## Quick start — GUI
+
+A development PySide6 GUI is provided to edit `input.ini`, build, run simulations, view run logs and plot outputs interactively.
+
+- Install Python deps (recommended inside a venv):
+  ```
+  python3 -m pip install -r tools/requirements_pyqt.txt
+  ```
+  See: [`tools/requirements_pyqt.txt`](../tools/requirements_pyqt.txt)
+
+- Launch GUI:
+  ```
+  python3 tools/pyqt_gui.py
+  ```
+  GUI script: [`tools/pyqt_gui.py`](../tools/pyqt_gui.py)
+
+- Features:
+  - Raw editor + quick fields for common parameters
+  - Build (nix build), Run, Stop controls
+  - Runtime log viewer; logs are saved to `run_logs/run_log_N.txt` after each run (see [`run_logs/`](../run_logs/))
+  - Interactive matplotlib plot (zoom/pan) with live updates (plots a selected output file periodically once it is created)
+  - File chooser to select any output file to plot
+
+See [`documentation/GUI_DOC.md`](GUI_DOC.md) for a short GUI guide.
+
+## Project layout (important files)
+
+- Top-level:
+  - [`input.ini`](../input.ini) — example input
+  - [`README.md`](../README.md) — project overview
+  - [`documentation/USAGE.md`](USAGE.md) — input parameter reference and quick examples
+  - [`documentation/GUI_DOC.md`](GUI_DOC.md) — GUI quick guide
+  - [`tools/pyqt_gui.py`](../tools/pyqt_gui.py) — PySide6 GUI
+  - [`tools/requirements_pyqt.txt`](../tools/requirements_pyqt.txt) — GUI Python requirements
+
+- Source:
+  - [`src/main.f90`](../src/main.f90) — program entry and initialization
+  - [`src/initializer.f90`](../src/initializer.f90)
+  - [`src/nuclear_wv.f90`](../src/nuclear_wv.f90)
+  - [`src/propagation.f90`](../src/propagation.f90)
+  - [`src/pulse_gen/pulse.f90`](../src/pulse_gen/pulse.f90)
+  - IO & helpers:
+    - [`src/IO_modules/`](../src/IO_modules/) — input parsing, variables, FFTW wrapper, etc.
+    - [`src/fft/fftw3.f90`](../src/fft/fftw3.f90)
+    - [`src/blas_module/`](../src/blas_module/)
+
+## Inputs
+
+The code uses Fortran namelist-style `input.ini`. See [`documentation/USAGE.md`](USAGE.md) for a detailed description of sections and parameters (grid, masses, time grid, electronic states, vibrational state options, laser pulses, absorber, output directory, parallelization flags).
+
+## Outputs
+
+- All outputs are written to the directory specified by `output_data_dir` in `input.ini`. Typical files:
+  - `density_1d.out`, `Pdensity_1d.out`, `avgR_1d.out`, `norm_1d.out`
+  - KER & momentum spectra: `KER_spectra_...`, `momt_spectra_...`
+  - Nuclear/vibrational data in `output_data/nuclear_wavepacket_data/...`
+- GUI live plotting watches the selected output file (relative to `output_data_dir`) and updates the figure periodically after the file appears.
+
+## Parallelization / performance
+
+- FFTW threading can be controlled via `prop_par_FFTW` and `ITP_par_FFTW` namelists.
+- OpenMP / threaded BLAS behavior depends on your build and environment variables (see [`src/meson.build`](../src/meson.build) and meson configuration).
+
+## Tests / verification
+
+- Use provided `input.ini` for the H2+ test case.
+- After a run, compare produced files in the `output_data_dir` and check saved run logs in [`run_logs/`](../run_logs/).
+- See [`documentation/TEST_DOC.md`](TEST_DOC.md) for test notes (if present).
+
+## Where to look to change behavior
+
+- Pulse shapes and IO: [`src/pulse_gen/pulse.f90`](../src/pulse_gen/pulse.f90)
+- Potentials / dipoles read logic: [`src/main.f90`](../src/main.f90) (`pot_read`, `trans_dipole_read`)
+- Propagation / observables: [`src/propagation.f90`](../src/propagation.f90)
+- Input parsing and shared variables: [`src/IO_modules/`](../src/IO_modules/)
+
+If you want, the GUI can be extended to validate parameters, present tooltips, or plot multiple files simultaneously — open an issue or request specific enhancements.
