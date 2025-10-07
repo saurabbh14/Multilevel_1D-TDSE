@@ -22,9 +22,9 @@ A development PySide6 GUI is provided to edit `input.ini`, build, run simulation
 
 - Install Python deps (recommended inside a venv):
   ```
-  python3 -m pip install -r tools/requirements_pyqt.txt
+  python3 -m pip install -r tools/requirements.txt
   ```
-  See: [`tools/requirements_pyqt.txt`](../tools/requirements_pyqt.txt)
+  See: [`tools/requirements.txt`](../tools/requirements.txt)
 
 - Launch GUI:
   ```
@@ -35,7 +35,7 @@ A development PySide6 GUI is provided to edit `input.ini`, build, run simulation
 - Features:
   - Raw editor + quick fields for common parameters
   - Build (nix build), Run, Stop controls
-  - Runtime log viewer; logs are saved to `run_logs/run_log_N.txt` after each run (see [`run_logs/`](../run_logs/))
+  - Runtime log viewer; logs are saved to `run_logs/run_log_N.txt` after each run
   - Interactive matplotlib plot (zoom/pan) with live updates (plots a selected output file periodically once it is created)
   - File chooser to select any output file to plot
 
