@@ -20,7 +20,8 @@ incdir = include_directories('IO_modules',
 executable('ML-TDSE',
             IO_mod_sources
             + libs_sources
-            + processes_sources,
+            + processes_sources
+            + prog_sources,
            dependencies: [ blas, lapack, omp, fftw3, fftw3_omp ],
            install : true,
            include_directories : incdir
