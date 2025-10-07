@@ -49,6 +49,8 @@ Further output files from these calcuations such vibartional eigen energies and 
 
 ## Time propagation calculations
 
-In this case the outfiles are stored in `output_data/time_prop`. Out of the many generated data files, it would be sufficient to check norm of the bound wavefunction over time at the start. We can plot the data from `norm_1d.out`. Only two columns: time(fs), norm $`\langle \psi | \psi \rangle`$ (arbitrary units).
+In this case the outfiles are stored in `output_data/time_prop`. Out of the many generated data files, it would be sufficient at the start to check norm of the bound wavefunction in the electronic states over time.  We can plot the data from `norm_1d.out`. Only two columns: time(fs), norm $`\langle \psi | \psi \rangle`$ (arbitrary units).
 
 ![image](figs/time_prop_norm.png)
+
+Above plot shows that our calculation starts with all the population residing in the electronic ground state. As the pulse is introduced the ground state population excites to the excited state, causing the population in the excited state to rise. The population oscilation between the two states can be understood through [Rabi oscilations](https://en.wikipedia.org/wiki/Rabi_cycle) phenomena. After the end of the pulse (~ 120 fs), the state populations become "stable". However, as the given excited state is dissociative (not bound), the population in this state eventually leaks away out of the simulation region and into the absorbing boundary. You may notice that some of the energetic wavepackets from ground state also leak out into the absorbing boundary, causing a slight dip in the population over time.  
