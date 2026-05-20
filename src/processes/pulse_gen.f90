@@ -144,7 +144,6 @@ contains
         this%E21 = 0.0_dp; this%E22 = 0.0_dp
         this%A21 = 0.0_dp; this%A22 = 0.0_dp
         this%g1 = 0.0_dp; this%g2 = 0.0_dp
-        this%tp1 = this%tp1/(1-2/pi) ! check this
         this%pulse_offset1 = 0.0_dp
         this%pulse_offset2 = 0.0_dp
 
@@ -155,6 +154,7 @@ contains
         ! Envelope shape for laser 1
         select case(trim(this%envelope_shape_laser1))
             case("cos2")
+                this%tp1 = this%tp1/(1-2/pi) ! check this
                 do k = 1, Nt
                     this%g1(k) = cos2(time(k), this%tp1, this%t_mid1, this%pulse_offset1)
                 enddo
@@ -172,6 +172,7 @@ contains
         ! Envelope shape for laser 2
         select case(trim(this%envelope_shape_laser2))
             case("cos2")
+                this%tp1 = this%tp1/(1-2/pi) ! check this
                 do k = 1, Nt 
                     this%g2(k) = cos2(time(k), this%tp1, this%t_mid2, this%pulse_offset2)
                 enddo
