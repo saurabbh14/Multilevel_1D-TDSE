@@ -14,7 +14,7 @@ module PrintInputVars
         print*, "Electronic potential kind: Elec_pot_kind =", trim(Elec_pot_kind)
         print*, "Number of maximum considered vibrational states: guess_vstates =", guess_vstates
         print*
-        print*, "Guess vibrational wavefunction (Gaussian): Initial position (RI) =", RI
+        print*, "Guess vibrational wavefunction (Gaussian): Initial position (RI) =", RI, "a.u."
         print*, "with initial width (kappa) =", kappa
         print*
         print*
@@ -30,7 +30,7 @@ module PrintInputVars
         print*, "electronic state(s)", (N_ini-1)
         print*, "vibrational state(s)", (v_ini-1)
         print*, "Gaussian Distribution TDSE:"
-        print*, "centered at RI: ", RI_tdse
+        print*, "centered at RI: ", RI_tdse, "a.u."
         print*, "standard deviation: ", kappa_tdse
         print*
         print*, "FFTW Parallelization:"
