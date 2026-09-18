@@ -24,7 +24,7 @@ This section documents all namelists and parameters present in the example `inpu
   - Description: Number of grid points in the coordinate (R) grid. Must be a power-of-two for best FFT performance but not strictly required.
 - Rmin / Rmax (real)  
   - Example: Rmin=0.5, Rmax=51.2  
-  - Units: 10^-10 m (Angstrom) in the input file. Converted to atomic units internally.  
+  - Units: Atomic units in the input file.  
   - Description: Left and right boundaries of the R grid (grid extent). Rmin < Rmax required.
 
 Notes: The code constructs an evenly spaced grid of NR points between Rmin and Rmax.
@@ -61,7 +61,7 @@ Notes: The code constructs an evenly spaced grid of NR points between Rmin and R
 ### &ini_guess_wf
 - RI (real)  
   - Example: RI=0.7  
-  - Units: Angstrom (10^-10 m) in input.  
+  - Units: Atomic units (a.u.) in input.  
   - Description: Center of the Gaussian used as an initial guess for ITP or for Gaussian TDSE initial distributions.
 - kappa (real)  
   - Example: kappa=-5.0  
@@ -136,7 +136,7 @@ Initial state for the real-time TDSE propagation.
   - Description: Vibrational quantum number to use when `initial_distribution = "single vibrational state"`.
 - RI_tdse (real)  
   - Example: RI_tdse = 1.5  
-  - Units: Angstrom in input. Center of Gaussian initial TDSE wavepacket.
+  - Units: Atomic units in input. Center of Gaussian initial TDSE wavepacket.
 - kappa_tdse (real)  
   - Example: kappa_tdse = -5.0  
   - Description: Width parameter for Gaussian TDSE initial wavepackets.
